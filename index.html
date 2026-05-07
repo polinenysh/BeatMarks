@@ -1,0 +1,647 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Music Markers</title>
+  <meta name="theme-color" content="#111827" />
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --card-2: #1f2937;
+      --text: #f9fafb;
+      --muted: #9ca3af;
+      --accent: #60a5fa;
+      --accent-2: #2563eb;
+      --danger: #ef4444;
+      --border: #374151;
+      --ok: #22c55e;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      background: radial-gradient(circle at top, #1e293b 0, var(--bg) 45%, #020617 100%);
+      color: var(--text);
+    }
+
+    .app {
+      width: min(720px, 100%);
+      margin: 0 auto;
+      padding: 20px;
+    }
+
+    header {
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      line-height: 1.15;
+    }
+
+    .subtitle {
+      margin: 0;
+      color: var(--muted);
+      font-size: 15px;
+    }
+
+    .card {
+      background: rgba(17, 24, 39, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 18px;
+      padding: 16px;
+      margin-bottom: 16px;
+      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
+      backdrop-filter: blur(12px);
+    }
+
+    label {
+      display: block;
+      margin-bottom: 8px;
+      color: var(--muted);
+      font-size: 14px;
+    }
+
+    input[type="file"],
+    input[type="text"],
+    input[type="number"] {
+      width: 100%;
+      border: 1px solid var(--border);
+      background: #020617;
+      color: var(--text);
+      border-radius: 12px;
+      padding: 12px;
+      font-size: 16px;
+      outline: none;
+    }
+
+    input[type="text"]:focus,
+    input[type="number"]:focus {
+      border-color: var(--accent);
+    }
+
+    audio {
+      width: 100%;
+      margin-top: 12px;
+    }
+
+    .track-name {
+      margin: 12px 0 0;
+      color: var(--muted);
+      word-break: break-word;
+      font-size: 14px;
+    }
+
+    .time-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-top: 12px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      font-size: 14px;
+    }
+
+    .progress {
+      width: 100%;
+      height: 8px;
+      background: #020617;
+      border-radius: 999px;
+      overflow: hidden;
+      margin-top: 10px;
+      border: 1px solid var(--border);
+    }
+
+    .progress-fill {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, var(--accent), var(--ok));
+      transition: width 0.12s linear;
+    }
+
+    .form-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 12px;
+    }
+
+    .small-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .buttons {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 12px;
+    }
+
+    button {
+      border: 0;
+      border-radius: 12px;
+      padding: 12px 14px;
+      color: var(--text);
+      background: var(--card-2);
+      font-size: 15px;
+      font-weight: 650;
+      cursor: pointer;
+      transition: transform 0.08s ease, background 0.15s ease, opacity 0.15s ease;
+      touch-action: manipulation;
+    }
+
+    button:active {
+      transform: scale(0.98);
+    }
+
+    button.primary {
+      background: var(--accent-2);
+    }
+
+    button.danger {
+      background: rgba(239, 68, 68, 0.18);
+      color: #fecaca;
+    }
+
+    button.ghost {
+      background: transparent;
+      border: 1px solid var(--border);
+    }
+
+    button:disabled {
+      opacity: 0.45;
+      cursor: not-allowed;
+    }
+
+    .markers-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 10px;
+      margin-bottom: 12px;
+    }
+
+    .markers-header h2 {
+      margin: 0;
+      font-size: 20px;
+    }
+
+    .markers-count {
+      color: var(--muted);
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .marker-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .marker {
+      display: grid;
+      grid-template-columns: 84px 1fr auto;
+      gap: 10px;
+      align-items: center;
+      padding: 10px;
+      border-radius: 14px;
+      border: 1px solid var(--border);
+      background: rgba(2, 6, 23, 0.5);
+    }
+
+    .marker-time {
+      font-variant-numeric: tabular-nums;
+      color: var(--accent);
+      font-weight: 750;
+    }
+
+    .marker-label {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .empty {
+      color: var(--muted);
+      border: 1px dashed var(--border);
+      padding: 18px;
+      border-radius: 14px;
+      text-align: center;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 13px;
+      line-height: 1.45;
+      margin: 10px 0 0;
+    }
+
+    .hidden-file {
+      display: none;
+    }
+
+    @media (max-width: 520px) {
+      .app {
+        padding: 14px;
+      }
+
+      h1 {
+        font-size: 24px;
+      }
+
+      .small-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .marker {
+        grid-template-columns: 74px 1fr;
+      }
+
+      .marker .buttons {
+        grid-column: 1 / -1;
+        margin-top: 0;
+      }
+
+      .marker .buttons button {
+        flex: 1;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="app">
+    <header>
+      <h1>Music Markers</h1>
+      <p class="subtitle">Загрузи MP3, добавь точки времени и перематывай к ним одним нажатием.</p>
+    </header>
+
+    <section class="card">
+      <label for="audioFile">MP3-файл</label>
+      <input id="audioFile" type="file" accept="audio/mpeg,audio/mp3,audio/*" />
+      <p id="trackName" class="track-name">Файл пока не выбран.</p>
+
+      <audio id="audio" controls preload="metadata"></audio>
+
+      <div class="time-row">
+        <span id="currentTime">00:00</span>
+        <span id="duration">00:00</span>
+      </div>
+      <div class="progress" aria-hidden="true">
+        <div id="progressFill" class="progress-fill"></div>
+      </div>
+
+      <div class="buttons">
+        <button id="back5" type="button">−5 сек</button>
+        <button id="forward5" type="button">+5 сек</button>
+        <button id="copyCurrentTime" type="button" class="ghost">Скопировать время</button>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="form-grid">
+        <div>
+          <label for="markerLabel">Название метки</label>
+          <input id="markerLabel" type="text" placeholder="Например: припев, момент 1, старт" />
+        </div>
+
+        <div class="small-grid">
+          <div>
+            <label for="markerTime">Секунда</label>
+            <input id="markerTime" type="number" min="0" step="0.1" placeholder="Например: 72" />
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button id="useCurrentTime" type="button" class="ghost" style="width:100%;">Взять текущее время</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="buttons">
+        <button id="addMarker" type="button" class="primary">Добавить метку</button>
+        <button id="clearForm" type="button">Очистить поля</button>
+      </div>
+
+      <p class="hint">Можно ввести секунду вручную или включить трек, остановиться на нужном моменте и нажать “Взять текущее время”.</p>
+    </section>
+
+    <section class="card">
+      <div class="markers-header">
+        <h2>Метки</h2>
+        <span id="markersCount" class="markers-count">0 шт.</span>
+      </div>
+
+      <div id="markerList" class="marker-list"></div>
+
+      <div class="buttons">
+        <button id="exportMarkers" type="button" class="ghost">Экспорт JSON</button>
+        <button id="importMarkersButton" type="button" class="ghost">Импорт JSON</button>
+        <button id="clearMarkers" type="button" class="danger">Удалить все</button>
+      </div>
+
+      <input id="importMarkersInput" class="hidden-file" type="file" accept="application/json,.json" />
+      <p class="hint">Метки сохраняются в браузере автоматически. JSON нужен, чтобы перенести список на другое устройство или сделать резервную копию.</p>
+    </section>
+  </main>
+
+  <script>
+    const STORAGE_KEY = "music-markers-v1";
+
+    const audioFile = document.getElementById("audioFile");
+    const audio = document.getElementById("audio");
+    const trackName = document.getElementById("trackName");
+    const currentTimeEl = document.getElementById("currentTime");
+    const durationEl = document.getElementById("duration");
+    const progressFill = document.getElementById("progressFill");
+
+    const markerLabel = document.getElementById("markerLabel");
+    const markerTime = document.getElementById("markerTime");
+    const useCurrentTime = document.getElementById("useCurrentTime");
+    const addMarker = document.getElementById("addMarker");
+    const clearForm = document.getElementById("clearForm");
+
+    const markerList = document.getElementById("markerList");
+    const markersCount = document.getElementById("markersCount");
+    const exportMarkers = document.getElementById("exportMarkers");
+    const importMarkersButton = document.getElementById("importMarkersButton");
+    const importMarkersInput = document.getElementById("importMarkersInput");
+    const clearMarkers = document.getElementById("clearMarkers");
+
+    const back5 = document.getElementById("back5");
+    const forward5 = document.getElementById("forward5");
+    const copyCurrentTime = document.getElementById("copyCurrentTime");
+
+    let markers = loadMarkers();
+    let currentObjectUrl = null;
+
+    function formatTime(seconds) {
+      if (!Number.isFinite(seconds) || seconds < 0) return "00:00";
+
+      const totalSeconds = Math.floor(seconds);
+      const hours = Math.floor(totalSeconds / 3600);
+      const minutes = Math.floor((totalSeconds % 3600) / 60);
+      const secs = totalSeconds % 60;
+
+      if (hours > 0) {
+        return `${String(hours).padStart(2, "0")}:${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+      }
+
+      return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    }
+
+    function loadMarkers() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if (!raw) return [];
+        const parsed = JSON.parse(raw);
+        if (!Array.isArray(parsed)) return [];
+        return parsed
+          .filter(item => typeof item.label === "string" && typeof item.time === "number")
+          .sort((a, b) => a.time - b.time);
+      } catch {
+        return [];
+      }
+    }
+
+    function saveMarkers() {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(markers));
+    }
+
+    function renderMarkers() {
+      markers.sort((a, b) => a.time - b.time);
+      markersCount.textContent = `${markers.length} шт.`;
+      markerList.innerHTML = "";
+
+      if (markers.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "Меток пока нет. Добавь первую точку времени выше.";
+        markerList.appendChild(empty);
+        return;
+      }
+
+      markers.forEach((marker, index) => {
+        const row = document.createElement("div");
+        row.className = "marker";
+
+        const time = document.createElement("div");
+        time.className = "marker-time";
+        time.textContent = formatTime(marker.time);
+
+        const label = document.createElement("div");
+        label.className = "marker-label";
+        label.title = marker.label;
+        label.textContent = marker.label || "Без названия";
+
+        const actions = document.createElement("div");
+        actions.className = "buttons";
+        actions.style.marginTop = "0";
+
+        const go = document.createElement("button");
+        go.type = "button";
+        go.className = "primary";
+        go.textContent = "Перейти";
+        go.addEventListener("click", () => jumpTo(marker.time));
+
+        const edit = document.createElement("button");
+        edit.type = "button";
+        edit.textContent = "Изм.";
+        edit.addEventListener("click", () => editMarker(index));
+
+        const remove = document.createElement("button");
+        remove.type = "button";
+        remove.className = "danger";
+        remove.textContent = "×";
+        remove.ariaLabel = "Удалить метку";
+        remove.addEventListener("click", () => removeMarker(index));
+
+        actions.append(go, edit, remove);
+        row.append(time, label, actions);
+        markerList.appendChild(row);
+      });
+    }
+
+    function jumpTo(time) {
+      if (!audio.src) {
+        alert("Сначала выбери MP3-файл.");
+        return;
+      }
+
+      audio.currentTime = Math.max(0, Number(time) || 0);
+      audio.play().catch(() => {
+        // На некоторых телефонах браузер может запретить автозапуск.
+        // В этом случае перемотка всё равно сработает, а пользователь нажмёт Play вручную.
+      });
+    }
+
+    function addOrUpdateMarker() {
+      const label = markerLabel.value.trim() || "Без названия";
+      const time = Number(markerTime.value);
+
+      if (!Number.isFinite(time) || time < 0) {
+        alert("Введи корректную секунду, например 72 или 72.5.");
+        return;
+      }
+
+      markers.push({
+        label,
+        time: Number(time.toFixed(1)),
+        id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now())
+      });
+
+      markerLabel.value = "";
+      markerTime.value = "";
+      saveMarkers();
+      renderMarkers();
+    }
+
+    function editMarker(index) {
+      const marker = markers[index];
+      if (!marker) return;
+
+      markerLabel.value = marker.label;
+      markerTime.value = marker.time;
+      markers.splice(index, 1);
+      saveMarkers();
+      renderMarkers();
+      markerLabel.focus();
+    }
+
+    function removeMarker(index) {
+      markers.splice(index, 1);
+      saveMarkers();
+      renderMarkers();
+    }
+
+    function updatePlayerTime() {
+      currentTimeEl.textContent = formatTime(audio.currentTime);
+      durationEl.textContent = formatTime(audio.duration);
+
+      if (Number.isFinite(audio.duration) && audio.duration > 0) {
+        const percent = (audio.currentTime / audio.duration) * 100;
+        progressFill.style.width = `${Math.min(100, Math.max(0, percent))}%`;
+      } else {
+        progressFill.style.width = "0%";
+      }
+    }
+
+    function exportMarkersToJson() {
+      const data = JSON.stringify(markers, null, 2);
+      const blob = new Blob([data], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "music-markers.json";
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+    }
+
+    function importMarkersFromJson(file) {
+      const reader = new FileReader();
+
+      reader.onload = () => {
+        try {
+          const parsed = JSON.parse(String(reader.result));
+          if (!Array.isArray(parsed)) throw new Error("JSON должен быть массивом.");
+
+          markers = parsed.map(item => ({
+            label: String(item.label || "Без названия"),
+            time: Number(item.time),
+            id: item.id || (crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()))
+          })).filter(item => Number.isFinite(item.time) && item.time >= 0);
+
+          saveMarkers();
+          renderMarkers();
+        } catch (error) {
+          alert("Не удалось импортировать JSON. Проверь формат файла.");
+        }
+      };
+
+      reader.readAsText(file);
+    }
+
+    audioFile.addEventListener("change", () => {
+      const file = audioFile.files && audioFile.files[0];
+      if (!file) return;
+
+      if (currentObjectUrl) {
+        URL.revokeObjectURL(currentObjectUrl);
+      }
+
+      currentObjectUrl = URL.createObjectURL(file);
+      audio.src = currentObjectUrl;
+      trackName.textContent = `Выбран файл: ${file.name}`;
+      audio.load();
+    });
+
+    audio.addEventListener("timeupdate", updatePlayerTime);
+    audio.addEventListener("loadedmetadata", updatePlayerTime);
+    audio.addEventListener("durationchange", updatePlayerTime);
+
+    useCurrentTime.addEventListener("click", () => {
+      markerTime.value = Number(audio.currentTime || 0).toFixed(1);
+    });
+
+    addMarker.addEventListener("click", addOrUpdateMarker);
+
+    clearForm.addEventListener("click", () => {
+      markerLabel.value = "";
+      markerTime.value = "";
+    });
+
+    back5.addEventListener("click", () => {
+      audio.currentTime = Math.max(0, (audio.currentTime || 0) - 5);
+    });
+
+    forward5.addEventListener("click", () => {
+      audio.currentTime = Math.min(audio.duration || Infinity, (audio.currentTime || 0) + 5);
+    });
+
+    copyCurrentTime.addEventListener("click", async () => {
+      const text = String(Number(audio.currentTime || 0).toFixed(1));
+      try {
+        await navigator.clipboard.writeText(text);
+        copyCurrentTime.textContent = "Скопировано";
+        setTimeout(() => copyCurrentTime.textContent = "Скопировать время", 1200);
+      } catch {
+        alert(`Текущее время: ${text} сек.`);
+      }
+    });
+
+    exportMarkers.addEventListener("click", exportMarkersToJson);
+
+    importMarkersButton.addEventListener("click", () => {
+      importMarkersInput.click();
+    });
+
+    importMarkersInput.addEventListener("change", () => {
+      const file = importMarkersInput.files && importMarkersInput.files[0];
+      if (file) importMarkersFromJson(file);
+      importMarkersInput.value = "";
+    });
+
+    clearMarkers.addEventListener("click", () => {
+      if (!markers.length) return;
+      const ok = confirm("Удалить все метки?");
+      if (!ok) return;
+      markers = [];
+      saveMarkers();
+      renderMarkers();
+    });
+
+    renderMarkers();
+    updatePlayerTime();
+  </script>
+</body>
+</html>
