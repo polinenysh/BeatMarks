@@ -952,7 +952,12 @@
 
     function removeMarker(index) {
       const markers = getCurrentMarkers();
+      const marker = markers[index];
 
+      if (!marker) return;
+      const ok = confirm(`Удалить метку “${marker.label || "Без названия"}”?`);
+
+      if (!ok) return;
       markers.splice(index, 1);
 
       saveMarkersByTrack();
