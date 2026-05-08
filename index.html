@@ -3,8 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Beat Marks</title>
+  <title>Music Markers</title>
   <meta name="theme-color" content="#111827" />
+
   <style>
     :root {
       --bg: #000000;
@@ -15,7 +16,7 @@
       --accent: #60a5fa;
       --accent-2: #2563eb;
       --danger: #ef4444;
-      --border: #374151;
+      --border: #000000;
       --ok: #22c55e;
     }
 
@@ -27,7 +28,7 @@
       margin: 0;
       min-height: 100vh;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, #1e293b 0, var(--bg) 45%, #020617 100%);
+      background: radial-gradient(circle at top, #1164e9 0, var(--bg) 45%, #06104a 100%);
       color: var(--text);
     }
 
@@ -113,12 +114,13 @@
 
     .progress {
       width: 100%;
-      height: 8px;
+      height: 12px;
       background: #020617;
       border-radius: 999px;
       overflow: hidden;
       margin-top: 10px;
       border: 1px solid var(--border);
+      cursor: pointer;
     }
 
     .progress-fill {
@@ -126,6 +128,7 @@
       height: 100%;
       background: linear-gradient(90deg, var(--accent), var(--ok));
       transition: width 0.12s linear;
+      pointer-events: none;
     }
 
     .form-grid {
@@ -145,6 +148,16 @@
       flex-wrap: wrap;
       gap: 10px;
       margin-top: 12px;
+    }
+
+    .player-buttons {
+      justify-content: center;
+    }
+
+    .copy-time-button {
+      flex-basis: 100%;
+      max-width: 220px;
+      margin: 0 auto;
     }
 
     button {
@@ -181,6 +194,12 @@
     button:disabled {
       opacity: 0.45;
       cursor: not-allowed;
+    }
+
+    #playPauseButton {
+      min-width: 52px;
+      font-size: 18px;
+      line-height: 1;
     }
 
     .markers-header {
@@ -278,6 +297,7 @@
     }
   </style>
 </head>
+
 <body>
   <main class="app">
     <header>
@@ -295,24 +315,29 @@
     </section>
 
     <section class="card">
-      <label for="audioFile">MP3-файл</label>
-      <input id="audioFile" type="file" accept="audio/mpeg,audio/mp3,audio/*" />
-      <p id="trackName" class="track-name">Файл пока не выбран.</p>
-
       <audio id="audio" controls preload="metadata"></audio>
+
+      <p id="trackName" class="track-name">Файл пока не выбран.</p>
 
       <div class="time-row">
         <span id="currentTime">00:00</span>
         <span id="duration">00:00</span>
       </div>
-      <div class="progress" aria-hidden="true">
+
+      <div id="progressBar" class="progress">
         <div id="progressFill" class="progress-fill"></div>
       </div>
 
-      <div class="buttons">
+      <div class="buttons player-buttons">
         <button id="back5" type="button">−5 сек</button>
+        <button id="playPauseButton" type="button" class="primary" aria-label="Продолжить" title="Продолжить">▶</button>
         <button id="forward5" type="button">+5 сек</button>
-        <button id="copyCurrentTime" type="button" class="ghost">Скопировать время</button>
+        <button id="copyCurrentTime" type="button" class="ghost copy-time-button">Скопировать время</button>
+      </div>
+
+      <div style="margin-top: 14px;">
+        <label for="preRollSeconds">Запускать метки на сколько секунд раньше</label>
+        <input id="preRollSeconds" type="number" min="0" step="0.5" placeholder="Например: 3" />
       </div>
     </section>
 
@@ -325,13 +350,10 @@
       <div id="markerList" class="marker-list"></div>
 
       <div class="buttons">
-        <button id="exportMarkers" type="button" class="ghost">Экспорт JSON</button>
-        <button id="importMarkersButton" type="button" class="ghost">Импорт JSON</button>
         <button id="clearMarkers" type="button" class="danger">Удалить все</button>
       </div>
 
-      <input id="importMarkersInput" class="hidden-file" type="file" accept="application/json,.json" />
-      <p class="hint">Метки сохраняются в браузере автоматически. JSON нужен, чтобы перенести список на другое устройство или сделать резервную копию.</p>
+      <p class="hint">Метки сохраняются в браузере автоматически для выбранного трека.</p>
     </section>
 
     <section class="card">
@@ -350,6 +372,7 @@
             <label for="markerTime">Секунда</label>
             <input id="markerTime" type="number" min="0" step="0.1" placeholder="Например: 72" />
           </div>
+
           <div>
             <label>&nbsp;</label>
             <button id="useCurrentTime" type="button" class="ghost" style="width:100%;">Взять текущее время</button>
@@ -363,6 +386,30 @@
       </div>
 
       <p class="hint">Можно ввести секунду вручную или включить трек, остановиться на нужном моменте и нажать “Взять текущее время”.</p>
+    </section>
+
+    <section class="card">
+      <div class="markers-header">
+        <h2>Импорт и экспорт меток</h2>
+      </div>
+
+      <div class="buttons">
+        <button id="exportMarkers" type="button" class="ghost">Экспорт JSON</button>
+        <button id="importMarkersButton" type="button" class="ghost">Импорт JSON</button>
+      </div>
+
+      <input id="importMarkersInput" class="hidden-file" type="file" accept="application/json,.json" />
+      <p class="hint">JSON нужен, чтобы перенести список меток на другое устройство или сделать резервную копию.</p>
+    </section>
+
+    <section class="card">
+      <div class="markers-header">
+        <h2>Добавить новый MP3</h2>
+      </div>
+
+      <label for="audioFile">MP3-файл</label>
+      <input id="audioFile" type="file" accept="audio/mpeg,audio/mp3,audio/*" />
+      <p class="hint">После загрузки файл появится в списке сохранённых треков наверху страницы.</p>
     </section>
   </main>
 
@@ -380,6 +427,8 @@
     const currentTimeEl = document.getElementById("currentTime");
     const durationEl = document.getElementById("duration");
     const progressFill = document.getElementById("progressFill");
+    const progressBar = document.getElementById("progressBar");
+    const playPauseButton = document.getElementById("playPauseButton");
 
     const markerLabel = document.getElementById("markerLabel");
     const markerTime = document.getElementById("markerTime");
@@ -397,6 +446,10 @@
     const back5 = document.getElementById("back5");
     const forward5 = document.getElementById("forward5");
     const copyCurrentTime = document.getElementById("copyCurrentTime");
+    const preRollSeconds = document.getElementById("preRollSeconds");
+
+    let preRollValue = loadPreRollValue();
+    if (preRollSeconds) preRollSeconds.value = String(preRollValue);
 
     let markersByTrack = loadMarkersByTrack();
     let currentTrackId = localStorage.getItem(LAST_TRACK_KEY) || null;
@@ -410,6 +463,7 @@
       await renderSavedTracks();
       renderMarkers();
       updatePlayerTime();
+      updatePlayPauseButton();
     }
 
     function formatTime(seconds) {
@@ -427,15 +481,27 @@
       return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
     }
 
+    function loadPreRollValue() {
+      const saved = Number(localStorage.getItem("beatmarks-pre-roll-seconds") || "0");
+      return Number.isFinite(saved) && saved >= 0 ? saved : 0;
+    }
+
+    function savePreRollValue(value) {
+      preRollValue = Math.max(0, Number(value) || 0);
+      localStorage.setItem("beatmarks-pre-roll-seconds", String(preRollValue));
+    }
+
     function makeTrackId(file) {
       return `${file.name}__${file.size}__${file.lastModified}`;
     }
 
     function getCurrentMarkers() {
       if (!currentTrackId) return [];
+
       if (!Array.isArray(markersByTrack[currentTrackId])) {
         markersByTrack[currentTrackId] = [];
       }
+
       return markersByTrack[currentTrackId];
     }
 
@@ -446,7 +512,6 @@
 
         const parsed = JSON.parse(raw);
 
-        // Мягкая миграция со старой версии, где хранился просто массив меток.
         if (Array.isArray(parsed)) {
           return { legacy: parsed };
         }
@@ -468,6 +533,7 @@
 
         request.onupgradeneeded = () => {
           const db = request.result;
+
           if (!db.objectStoreNames.contains(TRACKS_STORE_NAME)) {
             db.createObjectStore(TRACKS_STORE_NAME, { keyPath: "id" });
           }
@@ -481,6 +547,7 @@
     async function saveTrackToDb(file) {
       const db = await dbPromise;
       const fileBuffer = await file.arrayBuffer();
+
       const track = {
         id: makeTrackId(file),
         name: file.name,
@@ -494,6 +561,7 @@
       return new Promise((resolve, reject) => {
         const tx = db.transaction(TRACKS_STORE_NAME, "readwrite");
         tx.objectStore(TRACKS_STORE_NAME).put(track);
+
         tx.oncomplete = () => resolve(track);
         tx.onerror = () => reject(tx.error || new Error("Не удалось записать файл в IndexedDB."));
         tx.onabort = () => reject(tx.error || new Error("Запись файла в IndexedDB была отменена."));
@@ -502,11 +570,13 @@
 
     async function getTrackFromDb(id) {
       if (!id) return null;
+
       const db = await dbPromise;
 
       return new Promise((resolve, reject) => {
         const tx = db.transaction(TRACKS_STORE_NAME, "readonly");
         const request = tx.objectStore(TRACKS_STORE_NAME).get(id);
+
         request.onsuccess = () => resolve(request.result || null);
         request.onerror = () => reject(request.error);
       });
@@ -518,6 +588,7 @@
       return new Promise((resolve, reject) => {
         const tx = db.transaction(TRACKS_STORE_NAME, "readonly");
         const request = tx.objectStore(TRACKS_STORE_NAME).getAll();
+
         request.onsuccess = () => resolve(request.result || []);
         request.onerror = () => reject(request.error);
       });
@@ -529,6 +600,7 @@
       return new Promise((resolve, reject) => {
         const tx = db.transaction(TRACKS_STORE_NAME, "readwrite");
         tx.objectStore(TRACKS_STORE_NAME).delete(trackId);
+
         tx.oncomplete = () => resolve();
         tx.onerror = () => reject(tx.error);
       });
@@ -540,13 +612,14 @@
       try {
         const tracks = await getAllTracksFromDb();
         tracks.sort((a, b) => String(b.savedAt || "").localeCompare(String(a.savedAt || "")));
+
         tracksCount.textContent = `${tracks.length} шт.`;
         trackList.innerHTML = "";
 
         if (tracks.length === 0) {
           const empty = document.createElement("div");
           empty.className = "empty";
-          empty.textContent = "Сохранённых треков пока нет. Загрузи первый MP3 выше.";
+          empty.textContent = "Сохранённых треков пока нет. Загрузи первый MP3 ниже.";
           trackList.appendChild(empty);
           return;
         }
@@ -558,13 +631,17 @@
           row.tabIndex = 0;
           row.setAttribute("role", "button");
           row.setAttribute("aria-label", `Открыть трек ${track.name}`);
+
           row.addEventListener("click", () => {
-            if (track.id !== currentTrackId) setAudioFromTrack(track);
+            if (track.id !== currentTrackId) {
+              setAudioFromTrack(track, true);
+            }
           });
+
           row.addEventListener("keydown", (event) => {
             if ((event.key === "Enter" || event.key === " ") && track.id !== currentTrackId) {
               event.preventDefault();
-              setAudioFromTrack(track);
+              setAudioFromTrack(track, true);
             }
           });
 
@@ -586,9 +663,13 @@
           open.className = "primary";
           open.textContent = track.id === currentTrackId ? "Открыт" : "Открыть";
           open.disabled = track.id === currentTrackId;
+
           open.addEventListener("click", (event) => {
             event.stopPropagation();
-            if (track.id !== currentTrackId) setAudioFromTrack(track);
+
+            if (track.id !== currentTrackId) {
+              setAudioFromTrack(track, true);
+            }
           });
 
           const remove = document.createElement("button");
@@ -596,10 +677,13 @@
           remove.className = "danger";
           remove.textContent = "×";
           remove.ariaLabel = "Удалить сохранённый трек";
+
           remove.addEventListener("click", async (event) => {
             event.stopPropagation();
+
             const ok = confirm(`Удалить трек “${track.name}” и его метки из браузера?`);
             if (!ok) return;
+
             await deleteSavedTrack(track.id);
           });
 
@@ -609,6 +693,7 @@
         });
       } catch {
         trackList.innerHTML = "";
+
         const empty = document.createElement("div");
         empty.className = "empty";
         empty.textContent = "Не удалось прочитать список сохранённых треков.";
@@ -618,13 +703,17 @@
 
     function formatFileSize(bytes) {
       if (!Number.isFinite(bytes)) return "—";
+
       const mb = bytes / 1024 / 1024;
+
       if (mb >= 1) return `${mb.toFixed(1)} МБ`;
+
       return `${Math.max(1, Math.round(bytes / 1024))} КБ`;
     }
 
     async function deleteSavedTrack(trackId) {
       await deleteTrackFromDb(trackId);
+
       delete markersByTrack[trackId];
       saveMarkersByTrack();
 
@@ -641,23 +730,11 @@
         audio.load();
         trackName.textContent = "Файл пока не выбран.";
         updatePlayerTime();
+        updatePlayPauseButton();
       }
 
       await renderSavedTracks();
       renderMarkers();
-    }
-
-    async function deleteCurrentTrackFromDb() {
-      if (!currentTrackId) return;
-      const db = await dbPromise;
-      const idToDelete = currentTrackId;
-
-      return new Promise((resolve, reject) => {
-        const tx = db.transaction(TRACKS_STORE_NAME, "readwrite");
-        tx.objectStore(TRACKS_STORE_NAME).delete(idToDelete);
-        tx.oncomplete = () => resolve();
-        tx.onerror = () => reject(tx.error);
-      });
     }
 
     function getTrackBlob(track) {
@@ -672,7 +749,7 @@
       throw new Error("У сохранённого трека нет аудиоданных.");
     }
 
-    function setAudioFromTrack(track) {
+    function setAudioFromTrack(track, shouldPlay = true) {
       if (currentObjectUrl) {
         URL.revokeObjectURL(currentObjectUrl);
       }
@@ -683,6 +760,13 @@
 
       audio.src = currentObjectUrl;
       audio.load();
+
+      if (shouldPlay) {
+        audio.play().catch(() => {
+          // Браузер может запретить автозапуск.
+        });
+      }
+
       trackName.textContent = `Выбран файл: ${track.name} — сохранён в браузере`;
 
       if (!markersByTrack[currentTrackId]) {
@@ -692,6 +776,7 @@
       saveMarkersByTrack();
       renderMarkers();
       renderSavedTracks();
+      updatePlayPauseButton();
     }
 
     async function restoreLastTrack() {
@@ -702,6 +787,7 @@
 
       try {
         const track = await getTrackFromDb(currentTrackId);
+
         if (!track) {
           trackName.textContent = "Файл пока не выбран. Ранее сохранённый файл не найден в браузере.";
           currentTrackId = null;
@@ -709,7 +795,7 @@
           return;
         }
 
-        setAudioFromTrack(track);
+        setAudioFromTrack(track, false);
       } catch {
         trackName.textContent = "Не удалось восстановить сохранённый MP3. Выбери файл заново.";
       }
@@ -718,6 +804,7 @@
     function renderMarkers() {
       const markers = getCurrentMarkers();
       markers.sort((a, b) => a.time - b.time);
+
       markersCount.textContent = `${markers.length} шт.`;
       markerList.innerHTML = "";
 
@@ -732,7 +819,7 @@
       if (markers.length === 0) {
         const empty = document.createElement("div");
         empty.className = "empty";
-        empty.textContent = "Меток для этого трека пока нет. Добавь первую точку времени выше.";
+        empty.textContent = "Меток для этого трека пока нет. Добавь первую точку времени ниже.";
         markerList.appendChild(empty);
         return;
       }
@@ -740,6 +827,21 @@
       markers.forEach((marker, index) => {
         const row = document.createElement("div");
         row.className = "marker";
+        row.style.cursor = "pointer";
+        row.tabIndex = 0;
+        row.setAttribute("role", "button");
+        row.setAttribute("aria-label", `Перейти к метке ${marker.label}`);
+
+        row.addEventListener("click", () => {
+          jumpTo(marker.time);
+        });
+
+        row.addEventListener("keydown", (event) => {
+          if (event.key === "Enter" || event.key === " ") {
+            event.preventDefault();
+            jumpTo(marker.time);
+          }
+        });
 
         const time = document.createElement("div");
         time.className = "marker-time";
@@ -758,19 +860,31 @@
         go.type = "button";
         go.className = "primary";
         go.textContent = "Перейти";
-        go.addEventListener("click", () => jumpTo(marker.time));
+
+        go.addEventListener("click", (event) => {
+          event.stopPropagation();
+          jumpTo(marker.time);
+        });
 
         const edit = document.createElement("button");
         edit.type = "button";
         edit.textContent = "Изм.";
-        edit.addEventListener("click", () => editMarker(index));
+
+        edit.addEventListener("click", (event) => {
+          event.stopPropagation();
+          editMarker(index);
+        });
 
         const remove = document.createElement("button");
         remove.type = "button";
         remove.className = "danger";
         remove.textContent = "×";
         remove.ariaLabel = "Удалить метку";
-        remove.addEventListener("click", () => removeMarker(index));
+
+        remove.addEventListener("click", (event) => {
+          event.stopPropagation();
+          removeMarker(index);
+        });
 
         actions.append(go, edit, remove);
         row.append(time, label, actions);
@@ -784,7 +898,8 @@
         return;
       }
 
-      audio.currentTime = Math.max(0, Number(time) || 0);
+      audio.currentTime = Math.max(0, (Number(time) || 0) - preRollValue);
+
       audio.play().catch(() => {
         // На некоторых телефонах браузер может запретить автозапуск.
       });
@@ -805,6 +920,7 @@
       }
 
       const markers = getCurrentMarkers();
+
       markers.push({
         label,
         time: Number(time.toFixed(1)),
@@ -813,6 +929,7 @@
 
       markerLabel.value = "";
       markerTime.value = "";
+
       saveMarkersByTrack();
       renderMarkers();
     }
@@ -820,11 +937,14 @@
     function editMarker(index) {
       const markers = getCurrentMarkers();
       const marker = markers[index];
+
       if (!marker) return;
 
       markerLabel.value = marker.label;
       markerTime.value = marker.time;
+
       markers.splice(index, 1);
+
       saveMarkersByTrack();
       renderMarkers();
       markerLabel.focus();
@@ -832,7 +952,9 @@
 
     function removeMarker(index) {
       const markers = getCurrentMarkers();
+
       markers.splice(index, 1);
+
       saveMarkersByTrack();
       renderMarkers();
     }
@@ -849,6 +971,18 @@
       }
     }
 
+    function updatePlayPauseButton() {
+      if (!audio.src || audio.paused) {
+        playPauseButton.textContent = "▶";
+        playPauseButton.setAttribute("aria-label", "Продолжить");
+        playPauseButton.title = "Продолжить";
+      } else {
+        playPauseButton.textContent = "⏸";
+        playPauseButton.setAttribute("aria-label", "Пауза");
+        playPauseButton.title = "Пауза";
+      }
+    }
+
     function exportMarkersToJson() {
       const data = JSON.stringify({
         version: 2,
@@ -859,11 +993,14 @@
       const blob = new Blob([data], { type: "application/json" });
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
+
       a.href = url;
       a.download = "beatmarks-markers.json";
+
       document.body.appendChild(a);
       a.click();
       a.remove();
+
       URL.revokeObjectURL(url);
     }
 
@@ -879,6 +1016,7 @@
               alert("Сначала выбери MP3-файл, затем импортируй старый JSON со списком меток.");
               return;
             }
+
             markersByTrack[currentTrackId] = parsed;
           } else if (parsed && typeof parsed === "object" && parsed.markersByTrack) {
             markersByTrack = parsed.markersByTrack;
@@ -898,15 +1036,19 @@
 
     audioFile.addEventListener("change", async () => {
       const file = audioFile.files && audioFile.files[0];
+
       if (!file) return;
 
       try {
         trackName.textContent = "Сохраняю файл в браузере...";
+
         const track = await saveTrackToDb(file);
-        setAudioFromTrack(track);
+
+        setAudioFromTrack(track, true);
         await renderSavedTracks();
       } catch (error) {
         console.error("Ошибка сохранения MP3:", error);
+
         alert(`Не удалось сохранить MP3 в браузере. Причина: ${error && error.message ? error.message : "неизвестная ошибка"}`);
 
         if (currentObjectUrl) {
@@ -916,16 +1058,56 @@
         currentObjectUrl = URL.createObjectURL(file);
         currentTrackId = makeTrackId(file);
         localStorage.setItem(LAST_TRACK_KEY, currentTrackId);
+
         audio.src = currentObjectUrl;
+        audio.load();
+
+        audio.play().catch(() => {
+          // Браузер может запретить автозапуск.
+        });
+
         trackName.textContent = `Выбран файл: ${file.name}, но он не сохранён в браузере`;
+
         renderMarkers();
         await renderSavedTracks();
+        updatePlayPauseButton();
       }
     });
 
     audio.addEventListener("timeupdate", updatePlayerTime);
     audio.addEventListener("loadedmetadata", updatePlayerTime);
     audio.addEventListener("durationchange", updatePlayerTime);
+
+    audio.addEventListener("play", updatePlayPauseButton);
+    audio.addEventListener("pause", updatePlayPauseButton);
+    audio.addEventListener("ended", updatePlayPauseButton);
+
+    playPauseButton.addEventListener("click", () => {
+      if (!audio.src) {
+        alert("Сначала выбери MP3-файл.");
+        return;
+      }
+
+      if (audio.paused) {
+        audio.play().catch(() => {
+          alert("Не удалось запустить трек. Попробуй нажать Play в плеере.");
+        });
+      } else {
+        audio.pause();
+      }
+    });
+
+    progressBar.addEventListener("click", (event) => {
+      if (!audio.src || !Number.isFinite(audio.duration) || audio.duration <= 0) {
+        return;
+      }
+
+      const rect = progressBar.getBoundingClientRect();
+      const clickX = event.clientX - rect.left;
+      const percent = clickX / rect.width;
+
+      audio.currentTime = Math.max(0, Math.min(audio.duration, audio.duration * percent));
+    });
 
     useCurrentTime.addEventListener("click", () => {
       markerTime.value = Number(audio.currentTime || 0).toFixed(1);
@@ -946,12 +1128,21 @@
       audio.currentTime = Math.min(audio.duration || Infinity, (audio.currentTime || 0) + 5);
     });
 
+    preRollSeconds.addEventListener("input", () => {
+      savePreRollValue(preRollSeconds.value);
+    });
+
     copyCurrentTime.addEventListener("click", async () => {
       const text = String(Number(audio.currentTime || 0).toFixed(1));
+
       try {
         await navigator.clipboard.writeText(text);
+
         copyCurrentTime.textContent = "Скопировано";
-        setTimeout(() => copyCurrentTime.textContent = "Скопировать время", 1200);
+
+        setTimeout(() => {
+          copyCurrentTime.textContent = "Скопировать время";
+        }, 1200);
       } catch {
         alert(`Текущее время: ${text} сек.`);
       }
@@ -965,7 +1156,9 @@
 
     importMarkersInput.addEventListener("change", () => {
       const file = importMarkersInput.files && importMarkersInput.files[0];
+
       if (file) importMarkersFromJson(file);
+
       importMarkersInput.value = "";
     });
 
@@ -973,6 +1166,7 @@
       if (!currentTrackId) return;
 
       const ok = confirm("Удалить метки текущего трека и сам сохранённый MP3 из браузера?");
+
       if (!ok) return;
 
       await deleteSavedTrack(currentTrackId);
