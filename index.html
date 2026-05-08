@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Music Markers</title>
+  <title>Beat Marks</title>
   <meta name="theme-color" content="#111827" />
   <style>
     :root {
@@ -286,6 +286,15 @@
     </header>
 
     <section class="card">
+      <div class="markers-header">
+        <h2>Сохранённые треки</h2>
+        <span id="tracksCount" class="markers-count">0 шт.</span>
+      </div>
+
+      <div id="trackList" class="marker-list"></div>
+    </section>
+
+    <section class="card">
       <label for="audioFile">MP3-файл</label>
       <input id="audioFile" type="file" accept="audio/mpeg,audio/mp3,audio/*" />
       <p id="trackName" class="track-name">Файл пока не выбран.</p>
@@ -333,7 +342,7 @@
       <div class="form-grid">
         <div>
           <label for="markerLabel">Название метки</label>
-          <input id="markerLabel" type="text" placeholder="Например: припев, момент 1, старт" />
+          <input id="markerLabel" type="text" placeholder="Название метки" />
         </div>
 
         <div class="small-grid">
@@ -366,6 +375,8 @@
     const audioFile = document.getElementById("audioFile");
     const audio = document.getElementById("audio");
     const trackName = document.getElementById("trackName");
+    const trackList = document.getElementById("trackList");
+    const tracksCount = document.getElementById("tracksCount");
     const currentTimeEl = document.getElementById("currentTime");
     const durationEl = document.getElementById("duration");
     const progressFill = document.getElementById("progressFill");
@@ -396,6 +407,7 @@
 
     async function init() {
       await restoreLastTrack();
+      await renderSavedTracks();
       renderMarkers();
       updatePlayerTime();
     }
@@ -468,6 +480,7 @@
 
     async function saveTrackToDb(file) {
       const db = await dbPromise;
+      const fileBuffer = await file.arrayBuffer();
       const track = {
         id: makeTrackId(file),
         name: file.name,
@@ -475,14 +488,15 @@
         type: file.type || "audio/mpeg",
         lastModified: file.lastModified,
         savedAt: new Date().toISOString(),
-        blob: file
+        data: fileBuffer
       };
 
       return new Promise((resolve, reject) => {
         const tx = db.transaction(TRACKS_STORE_NAME, "readwrite");
         tx.objectStore(TRACKS_STORE_NAME).put(track);
         tx.oncomplete = () => resolve(track);
-        tx.onerror = () => reject(tx.error);
+        tx.onerror = () => reject(tx.error || new Error("Не удалось записать файл в IndexedDB."));
+        tx.onabort = () => reject(tx.error || new Error("Запись файла в IndexedDB была отменена."));
       });
     }
 
@@ -498,6 +512,141 @@
       });
     }
 
+    async function getAllTracksFromDb() {
+      const db = await dbPromise;
+
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(TRACKS_STORE_NAME, "readonly");
+        const request = tx.objectStore(TRACKS_STORE_NAME).getAll();
+        request.onsuccess = () => resolve(request.result || []);
+        request.onerror = () => reject(request.error);
+      });
+    }
+
+    async function deleteTrackFromDb(trackId) {
+      const db = await dbPromise;
+
+      return new Promise((resolve, reject) => {
+        const tx = db.transaction(TRACKS_STORE_NAME, "readwrite");
+        tx.objectStore(TRACKS_STORE_NAME).delete(trackId);
+        tx.oncomplete = () => resolve();
+        tx.onerror = () => reject(tx.error);
+      });
+    }
+
+    async function renderSavedTracks() {
+      if (!trackList || !tracksCount) return;
+
+      try {
+        const tracks = await getAllTracksFromDb();
+        tracks.sort((a, b) => String(b.savedAt || "").localeCompare(String(a.savedAt || "")));
+        tracksCount.textContent = `${tracks.length} шт.`;
+        trackList.innerHTML = "";
+
+        if (tracks.length === 0) {
+          const empty = document.createElement("div");
+          empty.className = "empty";
+          empty.textContent = "Сохранённых треков пока нет. Загрузи первый MP3 выше.";
+          trackList.appendChild(empty);
+          return;
+        }
+
+        tracks.forEach((track) => {
+          const row = document.createElement("div");
+          row.className = "marker";
+          row.style.cursor = "pointer";
+          row.tabIndex = 0;
+          row.setAttribute("role", "button");
+          row.setAttribute("aria-label", `Открыть трек ${track.name}`);
+          row.addEventListener("click", () => {
+            if (track.id !== currentTrackId) setAudioFromTrack(track);
+          });
+          row.addEventListener("keydown", (event) => {
+            if ((event.key === "Enter" || event.key === " ") && track.id !== currentTrackId) {
+              event.preventDefault();
+              setAudioFromTrack(track);
+            }
+          });
+
+          const size = document.createElement("div");
+          size.className = "marker-time";
+          size.textContent = formatFileSize(track.size);
+
+          const title = document.createElement("div");
+          title.className = "marker-label";
+          title.title = track.name;
+          title.textContent = track.id === currentTrackId ? `▶ ${track.name}` : track.name;
+
+          const actions = document.createElement("div");
+          actions.className = "buttons";
+          actions.style.marginTop = "0";
+
+          const open = document.createElement("button");
+          open.type = "button";
+          open.className = "primary";
+          open.textContent = track.id === currentTrackId ? "Открыт" : "Открыть";
+          open.disabled = track.id === currentTrackId;
+          open.addEventListener("click", (event) => {
+            event.stopPropagation();
+            if (track.id !== currentTrackId) setAudioFromTrack(track);
+          });
+
+          const remove = document.createElement("button");
+          remove.type = "button";
+          remove.className = "danger";
+          remove.textContent = "×";
+          remove.ariaLabel = "Удалить сохранённый трек";
+          remove.addEventListener("click", async (event) => {
+            event.stopPropagation();
+            const ok = confirm(`Удалить трек “${track.name}” и его метки из браузера?`);
+            if (!ok) return;
+            await deleteSavedTrack(track.id);
+          });
+
+          actions.append(open, remove);
+          row.append(size, title, actions);
+          trackList.appendChild(row);
+        });
+      } catch {
+        trackList.innerHTML = "";
+        const empty = document.createElement("div");
+        empty.className = "empty";
+        empty.textContent = "Не удалось прочитать список сохранённых треков.";
+        trackList.appendChild(empty);
+      }
+    }
+
+    function formatFileSize(bytes) {
+      if (!Number.isFinite(bytes)) return "—";
+      const mb = bytes / 1024 / 1024;
+      if (mb >= 1) return `${mb.toFixed(1)} МБ`;
+      return `${Math.max(1, Math.round(bytes / 1024))} КБ`;
+    }
+
+    async function deleteSavedTrack(trackId) {
+      await deleteTrackFromDb(trackId);
+      delete markersByTrack[trackId];
+      saveMarkersByTrack();
+
+      if (trackId === currentTrackId) {
+        localStorage.removeItem(LAST_TRACK_KEY);
+        currentTrackId = null;
+
+        if (currentObjectUrl) {
+          URL.revokeObjectURL(currentObjectUrl);
+          currentObjectUrl = null;
+        }
+
+        audio.removeAttribute("src");
+        audio.load();
+        trackName.textContent = "Файл пока не выбран.";
+        updatePlayerTime();
+      }
+
+      await renderSavedTracks();
+      renderMarkers();
+    }
+
     async function deleteCurrentTrackFromDb() {
       if (!currentTrackId) return;
       const db = await dbPromise;
@@ -511,12 +660,24 @@
       });
     }
 
+    function getTrackBlob(track) {
+      if (track.blob) {
+        return track.blob;
+      }
+
+      if (track.data) {
+        return new Blob([track.data], { type: track.type || "audio/mpeg" });
+      }
+
+      throw new Error("У сохранённого трека нет аудиоданных.");
+    }
+
     function setAudioFromTrack(track) {
       if (currentObjectUrl) {
         URL.revokeObjectURL(currentObjectUrl);
       }
 
-      currentObjectUrl = URL.createObjectURL(track.blob);
+      currentObjectUrl = URL.createObjectURL(getTrackBlob(track));
       currentTrackId = track.id;
       localStorage.setItem(LAST_TRACK_KEY, currentTrackId);
 
@@ -530,6 +691,7 @@
 
       saveMarkersByTrack();
       renderMarkers();
+      renderSavedTracks();
     }
 
     async function restoreLastTrack() {
@@ -742,8 +904,10 @@
         trackName.textContent = "Сохраняю файл в браузере...";
         const track = await saveTrackToDb(file);
         setAudioFromTrack(track);
-      } catch {
-        alert("Не удалось сохранить MP3 в браузере. Возможно, файл слишком большой или закончилось место.");
+        await renderSavedTracks();
+      } catch (error) {
+        console.error("Ошибка сохранения MP3:", error);
+        alert(`Не удалось сохранить MP3 в браузере. Причина: ${error && error.message ? error.message : "неизвестная ошибка"}`);
 
         if (currentObjectUrl) {
           URL.revokeObjectURL(currentObjectUrl);
@@ -755,6 +919,7 @@
         audio.src = currentObjectUrl;
         trackName.textContent = `Выбран файл: ${file.name}, но он не сохранён в браузере`;
         renderMarkers();
+        await renderSavedTracks();
       }
     });
 
@@ -810,27 +975,7 @@
       const ok = confirm("Удалить метки текущего трека и сам сохранённый MP3 из браузера?");
       if (!ok) return;
 
-      try {
-        await deleteCurrentTrackFromDb();
-      } catch {
-        // Если удалить файл не получилось, всё равно удаляем метки.
-      }
-
-      delete markersByTrack[currentTrackId];
-      saveMarkersByTrack();
-      localStorage.removeItem(LAST_TRACK_KEY);
-      currentTrackId = null;
-
-      if (currentObjectUrl) {
-        URL.revokeObjectURL(currentObjectUrl);
-        currentObjectUrl = null;
-      }
-
-      audio.removeAttribute("src");
-      audio.load();
-      trackName.textContent = "Файл пока не выбран.";
-      renderMarkers();
-      updatePlayerTime();
+      await deleteSavedTrack(currentTrackId);
     });
   </script>
 </body>
