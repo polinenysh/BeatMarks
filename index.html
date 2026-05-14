@@ -8,61 +8,249 @@
 
   <style>
     :root {
-      --bg: #000000;
-      --card: #202123;
-      --card-2: #1f2937;
-      --text: #f9fafb;
-      --muted: #9ca3af;
-      --accent: #60a5fa;
-      --accent-2: #2563eb;
+      --bg: #333840;
+      --panel: #2f343c;
+      --panel-soft: #3b414b;
+      --text: #f5f7fb;
+      --muted: #aeb4bf;
+      --accent: #e7ff00;
+      --accent-dark: #c8dd00;
       --danger: #ef4444;
-      --border: #000000;
-      --ok: #22c55e;
+      --border: rgba(255, 255, 255, 0.08);
+      --shadow: rgba(0, 0, 0, 0.28);
+      --player-height: 258px;
     }
 
-    * {
-      box-sizing: border-box;
-    }
+    * { box-sizing: border-box; }
+
+    html { scroll-behavior: smooth; }
 
     body {
       margin: 0;
       min-height: 100vh;
       font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: radial-gradient(circle at top, #1164e9 0, var(--bg) 45%, #06104a 100%);
+      background: var(--bg);
       color: var(--text);
+      padding-bottom: calc(var(--player-height) + 26px);
     }
 
     .app {
       width: min(720px, 100%);
       margin: 0 auto;
-      padding: 20px;
+      padding: 16px 18px 0;
     }
 
-    header {
-      margin-bottom: 20px;
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 20;
+      width: min(720px, 100%);
+      margin: 0 auto;
+      padding: 14px 18px 10px;
+      display: grid;
+      grid-template-columns: 44px 1fr 44px;
+      align-items: center;
+      background: linear-gradient(180deg, rgba(51, 56, 64, 0.98), rgba(51, 56, 64, 0.82));
+      backdrop-filter: blur(16px);
     }
 
-    h1 {
-      margin: 0 0 8px;
-      font-size: 28px;
+    .app-title {
+      margin: 0;
+      text-align: center;
+      font-size: 18px;
+      font-weight: 800;
+      letter-spacing: 0.01em;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .icon-button {
+      width: 44px;
+      height: 44px;
+      padding: 0;
+      border-radius: 16px;
+      display: inline-grid;
+      place-items: center;
+      background: transparent;
+      color: var(--muted);
+      border: 0;
+      cursor: pointer;
+      font-size: 24px;
+      line-height: 1;
+    }
+
+    .icon-button:active,
+    .control-btn:active,
+    .play-main:active,
+    button:active { transform: scale(0.96); }
+
+    .cover-card {
+      width: min(540px, calc(100vw - 36px));
+      aspect-ratio: 1 / 1;
+      margin: 34px auto 26px;
+      border-radius: 14px;
+      background:
+        radial-gradient(circle at 72% 24%, rgba(255,255,255,0.25), transparent 20%),
+        radial-gradient(circle at 45% 38%, rgba(231,255,0,0.18), transparent 10%),
+        linear-gradient(145deg, #222833, #111827 54%, #202935);
+      box-shadow: 0 26px 60px var(--shadow);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      border: 1px solid var(--border);
+    }
+
+    .markers-stage-header {
+      padding: 18px 18px 10px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .markers-stage-header h2 {
+      margin: 0;
+      font-size: 18px;
+    }
+
+    .markers-count {
+      color: var(--muted);
+      font-size: 14px;
+      white-space: nowrap;
+    }
+
+    .markers-scroll {
+      flex: 1;
+      min-height: 0;
+      overflow-y: auto;
+      padding: 0 14px 16px;
+      overscroll-behavior: contain;
+    }
+
+    .marker-list {
+      display: grid;
+      gap: 10px;
+    }
+
+    .marker {
+      position: relative;
+      display: grid;
+      grid-template-columns: 74px 1fr 38px;
+      gap: 10px;
+      align-items: center;
+      padding: 12px;
+      border-radius: 16px;
+      border: 1px solid var(--border);
+      background: rgba(255, 255, 255, 0.055);
+      cursor: pointer;
+    }
+
+    .marker-time {
+      font-variant-numeric: tabular-nums;
+      color: var(--accent);
+      font-weight: 850;
+    }
+
+    .marker-label {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+      font-weight: 650;
+    }
+
+    .marker-menu-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text);
+      border: 0;
+      padding: 0;
+      font-size: 22px;
+      line-height: 1;
+    }
+
+    .marker-action-menu {
+      position: absolute;
+      right: 10px;
+      top: 52px;
+      z-index: 10;
+      min-width: 142px;
+      display: none;
+      padding: 8px;
+      border-radius: 16px;
+      background: #252a32;
+      border: 1px solid var(--border);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.36);
+    }
+
+    .marker-action-menu.open { display: grid; gap: 8px; }
+
+    .marker-action-menu button {
+      width: 100%;
+      text-align: left;
+      border-radius: 12px;
+      padding: 10px 12px;
+    }
+
+    .empty {
+      color: var(--muted);
+      border: 1px dashed var(--border);
+      padding: 18px;
+      border-radius: 16px;
+      text-align: center;
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .track-info {
+      width: min(620px, 100%);
+      margin: 0 auto 10px;
+      display: grid;
+      grid-template-columns: 54px 1fr;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .track-thumb {
+      width: 54px;
+      height: 54px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #111827, #58606d);
+      border: 1px solid var(--border);
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+    }
+
+    .track-name {
+      margin: 0;
+      color: var(--text);
+      word-break: break-word;
+      font-size: 20px;
+      font-weight: 800;
       line-height: 1.15;
     }
 
-    .subtitle {
-      margin: 0;
+    .track-subtitle {
+      margin: 4px 0 0;
       color: var(--muted);
-      font-size: 15px;
+      font-size: 14px;
     }
 
     .card {
-      background: rgba(17, 24, 39, 0.88);
-      border: 1px solid rgba(255, 255, 255, 0.08);
-      border-radius: 18px;
+      background: rgba(47, 52, 60, 0.94);
+      border: 1px solid var(--border);
+      border-radius: 22px;
       padding: 16px;
       margin-bottom: 16px;
-      box-shadow: 0 18px 40px rgba(0, 0, 0, 0.25);
+      box-shadow: 0 18px 42px var(--shadow);
       backdrop-filter: blur(12px);
     }
+
+    .card h2 { margin: 0 0 12px; font-size: 20px; }
 
     label {
       display: block;
@@ -76,187 +264,127 @@
     input[type="number"] {
       width: 100%;
       border: 1px solid var(--border);
-      background: #020617;
+      background: #252a32;
       color: var(--text);
-      border-radius: 12px;
-      padding: 12px;
+      border-radius: 14px;
+      padding: 13px;
       font-size: 16px;
       outline: none;
     }
 
-    input[type="text"]:focus,
-    input[type="number"]:focus {
-      border-color: var(--accent);
-    }
+    input:focus { border-color: rgba(231, 255, 0, 0.65); }
 
-    audio {
-      width: 100%;
-      margin-top: 12px;
-    }
-
-    .track-name {
-      margin: 12px 0 0;
-      color: var(--muted);
-      word-break: break-word;
-      font-size: 14px;
-    }
+    audio { display: none; }
 
     .time-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
       gap: 12px;
-      margin-top: 12px;
+      margin-top: 10px;
       color: var(--muted);
       font-variant-numeric: tabular-nums;
-      font-size: 14px;
+      font-size: 13px;
     }
 
     .progress {
       width: 100%;
-      height: 12px;
-      background: #020617;
+      height: 5px;
+      background: rgba(255,255,255,0.16);
       border-radius: 999px;
-      overflow: hidden;
-      margin-top: 10px;
-      border: 1px solid var(--border);
+      overflow: visible;
+      margin-top: 12px;
       cursor: pointer;
     }
 
     .progress-fill {
       width: 0%;
       height: 100%;
-      background: linear-gradient(90deg, var(--accent), var(--ok));
+      background: var(--text);
+      border-radius: 999px;
       transition: width 0.12s linear;
       pointer-events: none;
     }
 
-    .form-grid {
+    .player-dock {
+      position: fixed;
+      left: 50%;
+      bottom: 0;
+      transform: translateX(-50%);
+      z-index: 30;
+      width: min(720px, 100%);
+      min-height: var(--player-height);
+      padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
+      background: linear-gradient(180deg, rgba(51, 56, 64, 0.72), rgba(51, 56, 64, 0.98) 22%);
+      backdrop-filter: blur(20px);
+      border-top: 1px solid var(--border);
+    }
+
+    .player-controls {
       display: grid;
-      grid-template-columns: 1fr;
+      grid-template-columns: 1fr 1fr 84px 1fr 1fr;
+      align-items: center;
       gap: 12px;
+      margin: 14px 0 12px;
     }
 
-    .small-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 12px;
-    }
-
-    .buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .player-buttons {
-      justify-content: center;
-    }
-
-    .copy-time-button {
-      flex-basis: 100%;
-      max-width: 220px;
-      margin: 0 auto;
-    }
-
+    .control-btn,
+    .play-main,
     button {
       border: 0;
-      border-radius: 12px;
-      padding: 12px 14px;
       color: var(--text);
-      background: var(--card-2);
-      font-size: 15px;
-      font-weight: 650;
+      background: var(--panel-soft);
       cursor: pointer;
       transition: transform 0.08s ease, background 0.15s ease, opacity 0.15s ease;
       touch-action: manipulation;
-    }
-
-    button:active {
-      transform: scale(0.98);
-    }
-
-    button.primary {
-      background: var(--accent-2);
-    }
-
-    button.danger {
-      background: rgba(239, 68, 68, 0.18);
-      color: #fecaca;
-    }
-
-    button.ghost {
-      background: transparent;
-      border: 1px solid var(--border);
-    }
-
-    button:disabled {
-      opacity: 0.45;
-      cursor: not-allowed;
-    }
-
-    #playPauseButton {
-      min-width: 52px;
-      font-size: 18px;
-      line-height: 1;
-    }
-
-    .markers-header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 10px;
-      margin-bottom: 12px;
-    }
-
-    .markers-header h2 {
-      margin: 0;
-      font-size: 20px;
-    }
-
-    .markers-count {
-      color: var(--muted);
-      font-size: 14px;
-      white-space: nowrap;
-    }
-
-    .marker-list {
-      display: grid;
-      gap: 10px;
-    }
-
-    .marker {
-      display: grid;
-      grid-template-columns: 84px 1fr auto;
-      gap: 10px;
-      align-items: center;
-      padding: 10px;
-      border-radius: 14px;
-      border: 1px solid var(--border);
-      background: rgba(2, 6, 23, 0.5);
-    }
-
-    .marker-time {
-      font-variant-numeric: tabular-nums;
-      color: var(--accent);
       font-weight: 750;
     }
 
-    .marker-label {
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
+    .control-btn {
+      width: 48px;
+      height: 48px;
+      border-radius: 999px;
+      justify-self: center;
+      display: grid;
+      place-items: center;
+      font-size: 22px;
+      padding: 0;
     }
 
-    .empty {
-      color: var(--muted);
-      border: 1px dashed var(--border);
-      padding: 18px;
-      border-radius: 14px;
-      text-align: center;
+    .seek-btn { font-size: 15px; }
+
+    .play-main {
+      width: 84px;
+      height: 84px;
+      border-radius: 50%;
+      justify-self: center;
+      background: var(--accent);
+      color: #111827;
+      font-size: 34px;
+      display: grid;
+      place-items: center;
+      padding: 0 0 0 4px;
+      box-shadow: 0 14px 34px rgba(231, 255, 0, 0.16);
     }
+
+    .play-main.is-pause { padding-left: 0; }
+
+    .pre-roll-wrap { margin-top: 6px; }
+
+    .form-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
+    .small-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+
+    button {
+      border-radius: 14px;
+      padding: 12px 14px;
+      font-size: 15px;
+    }
+
+    button.primary { background: var(--accent); color: #111827; }
+    button.danger { background: rgba(239, 68, 68, 0.18); color: #fecaca; }
+    button.ghost { background: rgba(255,255,255,0.06); border: 1px solid var(--border); }
+    button:disabled { opacity: 0.45; cursor: not-allowed; }
 
     .hint {
       color: var(--muted);
@@ -265,102 +393,93 @@
       margin: 10px 0 0;
     }
 
-    .hidden-file {
-      display: none;
+    .hidden-file { display: none; }
+
+    .menu-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 50;
+      background: rgba(0,0,0,0.34);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.18s ease;
     }
 
+    .menu-backdrop.open { opacity: 1; pointer-events: auto; }
+
+    .side-menu {
+      position: fixed;
+      top: 0;
+      right: 0;
+      z-index: 60;
+      width: min(390px, 92vw);
+      height: 100vh;
+      padding: 18px;
+      background: #2f343c;
+      box-shadow: -24px 0 60px rgba(0,0,0,0.35);
+      transform: translateX(105%);
+      transition: transform 0.22s ease;
+      overflow-y: auto;
+      overflow-x: hidden;
+    }
+
+    .side-menu .marker {
+      grid-template-columns: 68px minmax(0, 1fr) 36px;
+      width: 100%;
+    }
+
+    .side-menu.open { transform: translateX(0); }
+
+    .menu-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 16px;
+    }
+
+    .menu-head h2 { margin: 0; }
+
     @media (max-width: 520px) {
-      .app {
-        padding: 14px;
-      }
-
-      h1 {
-        font-size: 24px;
-      }
-
-      .small-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .marker {
-        grid-template-columns: 74px 1fr;
-      }
-
-      .marker .buttons {
-        grid-column: 1 / -1;
-        margin-top: 0;
-      }
-
-      .marker .buttons button {
-        flex: 1;
-      }
+      :root { --player-height: 248px; }
+      .app { padding: 12px 14px 0; }
+      .cover-card { margin-top: 24px; }
+      .player-controls { grid-template-columns: 1fr 1fr 78px 1fr 1fr; gap: 8px; }
+      .play-main { width: 78px; height: 78px; }
+      .control-btn { width: 42px; height: 42px; font-size: 20px; }
+      .small-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 
 <body>
+  <div class="topbar">
+    <div></div>
+    <h1 id="appTitle" class="app-title">Файл пока не выбран</h1>
+    <button id="openMenu" class="icon-button" type="button" aria-label="Открыть список треков">☰</button>
+  </div>
+
   <main class="app">
-    <header>
-      <h1>Music Markers</h1>
-      <p class="subtitle">Загрузи MP3, добавь точки времени и перематывай к ним одним нажатием.</p>
-    </header>
-
-    <section class="card">
-      <div class="markers-header">
-        <h2>Сохранённые треки</h2>
-        <span id="tracksCount" class="markers-count">0 шт.</span>
-      </div>
-
-      <div id="trackList" class="marker-list"></div>
-    </section>
-
-    <section class="card">
-      <audio id="audio" controls preload="metadata"></audio>
-
-      <p id="trackName" class="track-name">Файл пока не выбран.</p>
-
-      <div class="time-row">
-        <span id="currentTime">00:00</span>
-        <span id="duration">00:00</span>
-      </div>
-
-      <div id="progressBar" class="progress">
-        <div id="progressFill" class="progress-fill"></div>
-      </div>
-
-      <div class="buttons player-buttons">
-        <button id="back5" type="button">−5 сек</button>
-        <button id="playPauseButton" type="button" class="primary" aria-label="Продолжить" title="Продолжить">▶</button>
-        <button id="forward5" type="button">+5 сек</button>
-        <button id="copyCurrentTime" type="button" class="ghost copy-time-button">Скопировать время</button>
-      </div>
-
-      <div style="margin-top: 14px;">
-        <label for="preRollSeconds">Запускать метки на сколько секунд раньше</label>
-        <input id="preRollSeconds" type="number" min="0" step="0.5" placeholder="Например: 3" />
-      </div>
-    </section>
-
-    <section class="card">
-      <div class="markers-header">
+    <section class="cover-card" aria-label="Метки текущего трека">
+      <div class="markers-stage-header">
         <h2>Метки</h2>
         <span id="markersCount" class="markers-count">0 шт.</span>
       </div>
-
-      <div id="markerList" class="marker-list"></div>
-
-      <div class="buttons">
-        <button id="clearMarkers" type="button" class="danger">Удалить все</button>
+      <div class="markers-scroll">
+        <div id="markerList" class="marker-list"></div>
       </div>
+    </section>
 
-      <p class="hint">Метки сохраняются в браузере автоматически для выбранного трека.</p>
+    <section class="track-info">
+      <div class="track-thumb">♪</div>
+      <div>
+        <p id="trackName" class="track-name">Файл пока не выбран.</p>
+        <p class="track-subtitle">Нажми меню, чтобы выбрать или добавить трек</p>
+      </div>
     </section>
 
     <section class="card">
-      <div class="markers-header">
-        <h2>Добавить метку</h2>
-      </div>
-
+      <h2>Добавить метку</h2>
       <div class="form-grid">
         <div>
           <label for="markerLabel">Название метки</label>
@@ -372,7 +491,6 @@
             <label for="markerTime">Секунда</label>
             <input id="markerTime" type="number" min="0" step="0.1" placeholder="Например: 72" />
           </div>
-
           <div>
             <label>&nbsp;</label>
             <button id="useCurrentTime" type="button" class="ghost" style="width:100%;">Взять текущее время</button>
@@ -385,35 +503,64 @@
         <button id="clearForm" type="button">Очистить поля</button>
       </div>
 
-      <p class="hint">Можно ввести секунду вручную или включить трек, остановиться на нужном моменте и нажать “Взять текущее время”.</p>
+      <p class="hint">Метки открываются простым нажатием на поле метки. Для изменения или удаления жми ⋯ справа.</p>
     </section>
 
-    <section class="card">
-      <div class="markers-header">
-        <h2>Импорт и экспорт меток</h2>
-      </div>
+  </main>
 
+  <section class="player-dock" aria-label="Плеер">
+    <audio id="audio" preload="metadata"></audio>
+
+    <div id="progressBar" class="progress">
+      <div id="progressFill" class="progress-fill"></div>
+    </div>
+
+    <div class="time-row">
+      <span id="currentTime">00:00</span>
+      <span id="duration">00:00</span>
+    </div>
+
+    <div class="player-controls">
+      <button id="prevTrack" type="button" class="control-btn" aria-label="Предыдущий трек" title="Предыдущий трек">⏮</button>
+      <button id="back5" type="button" class="control-btn seek-btn" aria-label="Назад на 5 секунд" title="Назад на 5 секунд">−5</button>
+      <button id="playPauseButton" type="button" class="play-main" aria-label="Продолжить" title="Продолжить">▶</button>
+      <button id="forward5" type="button" class="control-btn seek-btn" aria-label="Вперёд на 5 секунд" title="Вперёд на 5 секунд">+5</button>
+      <button id="nextTrack" type="button" class="control-btn" aria-label="Следующий трек" title="Следующий трек">⏭</button>
+    </div>
+
+    <div class="pre-roll-wrap">
+      <label for="preRollSeconds">Запускать метки на сколько секунд раньше</label>
+      <input id="preRollSeconds" type="number" min="0" step="0.5" placeholder="Например: 3" />
+    </div>
+  </section>
+
+  <div id="menuBackdrop" class="menu-backdrop"></div>
+  <aside id="sideMenu" class="side-menu" aria-label="Меню треков">
+    <div class="menu-head">
+      <h2>Сохранённые треки</h2>
+      <button id="closeMenu" class="icon-button" type="button" aria-label="Закрыть меню">×</button>
+    </div>
+    <span id="tracksCount" class="markers-count">0 шт.</span>
+    <div id="trackList" class="marker-list" style="margin-top:12px;"></div>
+
+    <div class="card" style="margin-top:16px; box-shadow:none;">
+      <h2>Импорт и экспорт JSON</h2>
       <div class="buttons">
         <button id="exportMarkers" type="button" class="ghost">Экспорт JSON</button>
         <button id="importMarkersButton" type="button" class="ghost">Импорт JSON</button>
       </div>
-
       <input id="importMarkersInput" class="hidden-file" type="file" accept="application/json,.json" />
       <p class="hint">JSON нужен, чтобы перенести список меток на другое устройство или сделать резервную копию.</p>
-    </section>
+    </div>
 
-    <section class="card">
-      <div class="markers-header">
-        <h2>Добавить новый MP3</h2>
-      </div>
-
+    <div class="card" style="margin-top:16px; box-shadow:none;">
+      <h2>Добавить новый MP3</h2>
       <label for="audioFile">MP3-файл</label>
       <input id="audioFile" type="file" accept="audio/mpeg,audio/mp3,audio/*" />
-      <p class="hint">После загрузки файл появится в списке сохранённых треков наверху страницы.</p>
-    </section>
-  </main>
-
-  <script>
+      <p class="hint">После загрузки файл появится в списке сохранённых треков.</p>
+    </div>
+  </aside>
+<script>
     const MARKERS_STORAGE_KEY = "beatmarks-markers-v2";
     const TRACKS_DB_NAME = "beatmarks-audio-db";
     const TRACKS_STORE_NAME = "tracks";
@@ -421,6 +568,7 @@
 
     const audioFile = document.getElementById("audioFile");
     const audio = document.getElementById("audio");
+    const appTitle = document.getElementById("appTitle");
     const trackName = document.getElementById("trackName");
     const trackList = document.getElementById("trackList");
     const tracksCount = document.getElementById("tracksCount");
@@ -441,12 +589,16 @@
     const exportMarkers = document.getElementById("exportMarkers");
     const importMarkersButton = document.getElementById("importMarkersButton");
     const importMarkersInput = document.getElementById("importMarkersInput");
-    const clearMarkers = document.getElementById("clearMarkers");
 
     const back5 = document.getElementById("back5");
     const forward5 = document.getElementById("forward5");
-    const copyCurrentTime = document.getElementById("copyCurrentTime");
     const preRollSeconds = document.getElementById("preRollSeconds");
+    const openMenu = document.getElementById("openMenu");
+    const closeMenu = document.getElementById("closeMenu");
+    const sideMenu = document.getElementById("sideMenu");
+    const menuBackdrop = document.getElementById("menuBackdrop");
+    const prevTrack = document.getElementById("prevTrack");
+    const nextTrack = document.getElementById("nextTrack");
 
     let preRollValue = loadPreRollValue();
     if (preRollSeconds) preRollSeconds.value = String(preRollValue);
@@ -479,6 +631,26 @@
       }
 
       return `${String(minutes).padStart(2, "0")}:${String(secs).padStart(2, "0")}`;
+    }
+
+    function getTrackTitle(name) {
+      const clean = String(name || "").trim();
+      if (!clean) return "Файл пока не выбран";
+      return clean.replace(/\.[^/.]+$/, "");
+    }
+
+    function setDisplayedTrackName(name) {
+      const title = getTrackTitle(name);
+      appTitle.textContent = title;
+      trackName.textContent = title;
+      trackName.title = title;
+      appTitle.title = title;
+    }
+
+    function closeAllMarkerMenus() {
+      document.querySelectorAll(".marker-action-menu.open").forEach((menu) => {
+        menu.classList.remove("open");
+      });
     }
 
     function loadPreRollValue() {
@@ -627,21 +799,20 @@
         tracks.forEach((track) => {
           const row = document.createElement("div");
           row.className = "marker";
-          row.style.cursor = "pointer";
           row.tabIndex = 0;
           row.setAttribute("role", "button");
           row.setAttribute("aria-label", `Открыть трек ${track.name}`);
 
           row.addEventListener("click", () => {
-            if (track.id !== currentTrackId) {
-              setAudioFromTrack(track, true);
-            }
+            if (track.id !== currentTrackId) setAudioFromTrack(track, true);
+            closeTrackMenu();
           });
 
           row.addEventListener("keydown", (event) => {
-            if ((event.key === "Enter" || event.key === " ") && track.id !== currentTrackId) {
+            if (event.key === "Enter" || event.key === " ") {
               event.preventDefault();
-              setAudioFromTrack(track, true);
+              if (track.id !== currentTrackId) setAudioFromTrack(track, true);
+              closeTrackMenu();
             }
           });
 
@@ -654,46 +825,24 @@
           title.title = track.name;
           title.textContent = track.id === currentTrackId ? `▶ ${track.name}` : track.name;
 
-          const actions = document.createElement("div");
-          actions.className = "buttons";
-          actions.style.marginTop = "0";
-
-          const open = document.createElement("button");
-          open.type = "button";
-          open.className = "primary";
-          open.textContent = track.id === currentTrackId ? "Открыт" : "Открыть";
-          open.disabled = track.id === currentTrackId;
-
-          open.addEventListener("click", (event) => {
-            event.stopPropagation();
-
-            if (track.id !== currentTrackId) {
-              setAudioFromTrack(track, true);
-            }
-          });
-
           const remove = document.createElement("button");
           remove.type = "button";
-          remove.className = "danger";
+          remove.className = "marker-menu-btn";
           remove.textContent = "×";
           remove.ariaLabel = "Удалить сохранённый трек";
 
           remove.addEventListener("click", async (event) => {
             event.stopPropagation();
-
             const ok = confirm(`Удалить трек “${track.name}” и его метки из браузера?`);
             if (!ok) return;
-
             await deleteSavedTrack(track.id);
           });
 
-          actions.append(open, remove);
-          row.append(size, title, actions);
+          row.append(size, title, remove);
           trackList.appendChild(row);
         });
       } catch {
         trackList.innerHTML = "";
-
         const empty = document.createElement("div");
         empty.className = "empty";
         empty.textContent = "Не удалось прочитать список сохранённых треков.";
@@ -728,7 +877,7 @@
 
         audio.removeAttribute("src");
         audio.load();
-        trackName.textContent = "Файл пока не выбран.";
+        setDisplayedTrackName("");
         updatePlayerTime();
         updatePlayPauseButton();
       }
@@ -767,7 +916,7 @@
         });
       }
 
-      trackName.textContent = `Выбран файл: ${track.name} — сохранён в браузере`;
+      setDisplayedTrackName(track.name);
 
       if (!markersByTrack[currentTrackId]) {
         markersByTrack[currentTrackId] = [];
@@ -781,7 +930,7 @@
 
     async function restoreLastTrack() {
       if (!currentTrackId) {
-        trackName.textContent = "Файл пока не выбран.";
+        setDisplayedTrackName("");
         return;
       }
 
@@ -789,7 +938,7 @@
         const track = await getTrackFromDb(currentTrackId);
 
         if (!track) {
-          trackName.textContent = "Файл пока не выбран. Ранее сохранённый файл не найден в браузере.";
+          setDisplayedTrackName("Файл пока не выбран");
           currentTrackId = null;
           localStorage.removeItem(LAST_TRACK_KEY);
           return;
@@ -797,7 +946,7 @@
 
         setAudioFromTrack(track, false);
       } catch {
-        trackName.textContent = "Не удалось восстановить сохранённый MP3. Выбери файл заново.";
+        setDisplayedTrackName("Файл пока не выбран");
       }
     }
 
@@ -811,7 +960,7 @@
       if (!currentTrackId) {
         const empty = document.createElement("div");
         empty.className = "empty";
-        empty.textContent = "Сначала выбери MP3-файл. После этого метки будут сохраняться именно для этого трека.";
+        empty.textContent = "Сначала выбери MP3-файл через меню. После этого метки будут здесь, как обложка в музыкальном приложении.";
         markerList.appendChild(empty);
         return;
       }
@@ -819,7 +968,7 @@
       if (markers.length === 0) {
         const empty = document.createElement("div");
         empty.className = "empty";
-        empty.textContent = "Меток для этого трека пока нет. Добавь первую точку времени ниже.";
+        empty.textContent = "Меток для этого трека пока нет. Промотай вниз и добавь первую.";
         markerList.appendChild(empty);
         return;
       }
@@ -827,14 +976,11 @@
       markers.forEach((marker, index) => {
         const row = document.createElement("div");
         row.className = "marker";
-        row.style.cursor = "pointer";
         row.tabIndex = 0;
         row.setAttribute("role", "button");
         row.setAttribute("aria-label", `Перейти к метке ${marker.label}`);
 
-        row.addEventListener("click", () => {
-          jumpTo(marker.time);
-        });
+        row.addEventListener("click", () => jumpTo(marker.time));
 
         row.addEventListener("keydown", (event) => {
           if (event.key === "Enter" || event.key === " ") {
@@ -852,42 +998,45 @@
         label.title = marker.label;
         label.textContent = marker.label || "Без названия";
 
-        const actions = document.createElement("div");
-        actions.className = "buttons";
-        actions.style.marginTop = "0";
+        const menu = document.createElement("button");
+        menu.type = "button";
+        menu.className = "marker-menu-btn";
+        menu.textContent = "⋯";
+        menu.ariaLabel = "Изменить или удалить метку";
 
-        const go = document.createElement("button");
-        go.type = "button";
-        go.className = "primary";
-        go.textContent = "Перейти";
+        const actionMenu = document.createElement("div");
+        actionMenu.className = "marker-action-menu";
 
-        go.addEventListener("click", (event) => {
+        const editButton = document.createElement("button");
+        editButton.type = "button";
+        editButton.className = "ghost";
+        editButton.textContent = "Изменить";
+        editButton.addEventListener("click", (event) => {
           event.stopPropagation();
-          jumpTo(marker.time);
-        });
-
-        const edit = document.createElement("button");
-        edit.type = "button";
-        edit.textContent = "Изм.";
-
-        edit.addEventListener("click", (event) => {
-          event.stopPropagation();
+          closeAllMarkerMenus();
           editMarker(index);
         });
 
-        const remove = document.createElement("button");
-        remove.type = "button";
-        remove.className = "danger";
-        remove.textContent = "×";
-        remove.ariaLabel = "Удалить метку";
-
-        remove.addEventListener("click", (event) => {
+        const deleteButton = document.createElement("button");
+        deleteButton.type = "button";
+        deleteButton.className = "danger";
+        deleteButton.textContent = "Удалить";
+        deleteButton.addEventListener("click", (event) => {
           event.stopPropagation();
+          closeAllMarkerMenus();
           removeMarker(index);
         });
 
-        actions.append(go, edit, remove);
-        row.append(time, label, actions);
+        actionMenu.append(editButton, deleteButton);
+
+        menu.addEventListener("click", (event) => {
+          event.stopPropagation();
+          const wasOpen = actionMenu.classList.contains("open");
+          closeAllMarkerMenus();
+          if (!wasOpen) actionMenu.classList.add("open");
+        });
+
+        row.append(time, label, menu, actionMenu);
         markerList.appendChild(row);
       });
     }
@@ -955,9 +1104,6 @@
       const marker = markers[index];
 
       if (!marker) return;
-      const ok = confirm(`Удалить метку “${marker.label || "Без названия"}”?`);
-
-      if (!ok) return;
       markers.splice(index, 1);
 
       saveMarkersByTrack();
@@ -979,10 +1125,12 @@
     function updatePlayPauseButton() {
       if (!audio.src || audio.paused) {
         playPauseButton.textContent = "▶";
+        playPauseButton.classList.remove("is-pause");
         playPauseButton.setAttribute("aria-label", "Продолжить");
         playPauseButton.title = "Продолжить";
       } else {
         playPauseButton.textContent = "⏸";
+        playPauseButton.classList.add("is-pause");
         playPauseButton.setAttribute("aria-label", "Пауза");
         playPauseButton.title = "Пауза";
       }
@@ -1039,13 +1187,36 @@
       reader.readAsText(file);
     }
 
+    function openTrackMenu() {
+      sideMenu.classList.add("open");
+      menuBackdrop.classList.add("open");
+    }
+
+    function closeTrackMenu() {
+      sideMenu.classList.remove("open");
+      menuBackdrop.classList.remove("open");
+    }
+
+    async function switchTrack(direction) {
+      const tracks = await getAllTracksFromDb();
+      tracks.sort((a, b) => String(b.savedAt || "").localeCompare(String(a.savedAt || "")));
+      if (tracks.length === 0) {
+        alert("Сначала добавь MP3 через меню.");
+        return;
+      }
+
+      const currentIndex = Math.max(0, tracks.findIndex((track) => track.id === currentTrackId));
+      const nextIndex = (currentIndex + direction + tracks.length) % tracks.length;
+      setAudioFromTrack(tracks[nextIndex], true);
+    }
+
     audioFile.addEventListener("change", async () => {
       const file = audioFile.files && audioFile.files[0];
 
       if (!file) return;
 
       try {
-        trackName.textContent = "Сохраняю файл в браузере...";
+        setDisplayedTrackName("Сохраняю файл...");
 
         const track = await saveTrackToDb(file);
 
@@ -1071,7 +1242,7 @@
           // Браузер может запретить автозапуск.
         });
 
-        trackName.textContent = `Выбран файл: ${file.name}, но он не сохранён в браузере`;
+        setDisplayedTrackName(file.name);
 
         renderMarkers();
         await renderSavedTracks();
@@ -1133,24 +1304,14 @@
       audio.currentTime = Math.min(audio.duration || Infinity, (audio.currentTime || 0) + 5);
     });
 
+    prevTrack.addEventListener("click", () => switchTrack(-1));
+    nextTrack.addEventListener("click", () => switchTrack(1));
+    openMenu.addEventListener("click", openTrackMenu);
+    closeMenu.addEventListener("click", closeTrackMenu);
+    menuBackdrop.addEventListener("click", closeTrackMenu);
+
     preRollSeconds.addEventListener("input", () => {
       savePreRollValue(preRollSeconds.value);
-    });
-
-    copyCurrentTime.addEventListener("click", async () => {
-      const text = String(Number(audio.currentTime || 0).toFixed(1));
-
-      try {
-        await navigator.clipboard.writeText(text);
-
-        copyCurrentTime.textContent = "Скопировано";
-
-        setTimeout(() => {
-          copyCurrentTime.textContent = "Скопировать время";
-        }, 1200);
-      } catch {
-        alert(`Текущее время: ${text} сек.`);
-      }
     });
 
     exportMarkers.addEventListener("click", exportMarkersToJson);
@@ -1167,15 +1328,28 @@
       importMarkersInput.value = "";
     });
 
-    clearMarkers.addEventListener("click", async () => {
-      if (!currentTrackId) return;
+    document.addEventListener("click", closeAllMarkerMenus);
 
-      const ok = confirm("Удалить метки текущего трека и сам сохранённый MP3 из браузера?");
-
-      if (!ok) return;
-
-      await deleteSavedTrack(currentTrackId);
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeAllMarkerMenus();
+        closeTrackMenu();
+      }
     });
+
+    const markersScroll = document.querySelector(".markers-scroll");
+    if (markersScroll) {
+      markersScroll.addEventListener("wheel", (event) => {
+        const atTop = markersScroll.scrollTop <= 0;
+        const atBottom = Math.ceil(markersScroll.scrollTop + markersScroll.clientHeight) >= markersScroll.scrollHeight;
+
+        if ((event.deltaY < 0 && atTop) || (event.deltaY > 0 && atBottom)) {
+          event.preventDefault();
+          window.scrollBy({ top: event.deltaY, left: 0, behavior: "auto" });
+        }
+      }, { passive: false });
+    }
+
   </script>
 </body>
 </html>
