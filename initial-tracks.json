@@ -1,0 +1,23 @@
+[
+  {
+    "name": "А я родом.mp3",
+    "size": 6943479,
+    "lastModified": 1766412476000,
+    "audio": "./tracks/a-ya-rodom.mp3",
+    "markers": "./tracks/a-ya-rodom.json"
+  },
+  {
+    "name": "Loco.mp3",
+    "size": 5938617,
+    "lastModified": 1766412363000,
+    "audio": "./tracks/loco.mp3",
+    "markers": "./tracks/loco.json"
+  },
+  {
+    "name": "dancehall-3.mp3",
+    "size": 5667876,
+    "lastModified": 1793546460000,
+    "audio": "./tracks/dancehall-3.mp3",
+    "markers": "./tracks/dancehall-3.json"
+  }
+]

@@ -1,6 +1,7 @@
 const MARKERS_STORAGE_KEY = "beatmarks-markers-v2";
 const TRACKS_DB_NAME = "beatmarks-audio-db";
 const TRACKS_STORE_NAME = "tracks";
+const INITIAL_TRACKS_STORE_NAME = "initialTracks";
 const LAST_TRACK_KEY = "beatmarks-last-track-id";
 
 const audioFile = document.getElementById("audioFile");
@@ -9,12 +10,15 @@ const appTitle = document.getElementById("appTitle");
 const trackName = document.getElementById("trackName");
 const trackList = document.getElementById("trackList");
 const tracksCount = document.getElementById("tracksCount");
+const initialTracksStatus = document.getElementById("initialTracksStatus");
+const retryInitialTracks = document.getElementById("retryInitialTracks");
 const currentTimeEl = document.getElementById("currentTime");
 const durationEl = document.getElementById("duration");
 const progressFill = document.getElementById("progressFill");
 const progressBar = document.getElementById("progressBar");
 const playPauseButton = document.getElementById("playPauseButton");
 
+const markerForm = document.getElementById("markerForm");
 const markerLabel = document.getElementById("markerLabel");
 const markerTime = document.getElementById("markerTime");
 const useCurrentTime = document.getElementById("useCurrentTime");
@@ -26,6 +30,8 @@ const markersCount = document.getElementById("markersCount");
 const exportMarkers = document.getElementById("exportMarkers");
 const importMarkersButton = document.getElementById("importMarkersButton");
 const importMarkersInput = document.getElementById("importMarkersInput");
+const jsonFormatButton = document.getElementById("jsonFormatButton");
+const jsonFormatHelp = document.getElementById("jsonFormatHelp");
 
 const back5 = document.getElementById("back5");
 const forward5 = document.getElementById("forward5");
@@ -53,6 +59,7 @@ async function init() {
   renderMarkers();
   updatePlayerTime();
   updatePlayPauseButton();
+  await initializeInitialTracks();
 }
 
 function formatTime(seconds) {
@@ -76,18 +83,58 @@ function getTrackTitle(name) {
   return clean.replace(/\.[^/.]+$/, "");
 }
 
-function setDisplayedTrackName(name) {
-  const title = getTrackTitle(name);
+function setDisplayedTrackName(name, displayName = "") {
+  const title = displayName || getTrackTitle(name);
   appTitle.textContent = title;
   trackName.textContent = title;
   trackName.title = title;
   appTitle.title = title;
 }
 
-function closeAllMarkerMenus() {
+function getTrackDisplayName(track) {
+  return track.displayName || track.name;
+}
+
+function closeAllActionMenus() {
   document.querySelectorAll(".marker-action-menu.open").forEach((menu) => {
     menu.classList.remove("open");
+    menu.previousElementSibling.setAttribute("aria-expanded", "false");
   });
+}
+
+function createActionMenu(label, actions) {
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "marker-menu-btn";
+  button.textContent = "⋯";
+  button.ariaLabel = label;
+  button.setAttribute("aria-expanded", "false");
+
+  const menu = document.createElement("div");
+  menu.className = "marker-action-menu";
+
+  actions.forEach((action) => {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = action.className;
+    item.textContent = action.label;
+    item.addEventListener("click", (event) => {
+      event.stopPropagation();
+      closeAllActionMenus();
+      action.onClick();
+    });
+    menu.appendChild(item);
+  });
+
+  button.addEventListener("click", (event) => {
+    event.stopPropagation();
+    const wasOpen = menu.classList.contains("open");
+    closeAllActionMenus();
+    menu.classList.toggle("open", !wasOpen);
+    button.setAttribute("aria-expanded", String(!wasOpen));
+  });
+
+  return { button, menu };
 }
 
 function loadPreRollValue() {
@@ -138,7 +185,7 @@ function saveMarkersByTrack() {
 
 function openTracksDb() {
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(TRACKS_DB_NAME, 1);
+    const request = indexedDB.open(TRACKS_DB_NAME, 2);
 
     request.onupgradeneeded = () => {
       const db = request.result;
@@ -146,11 +193,149 @@ function openTracksDb() {
       if (!db.objectStoreNames.contains(TRACKS_STORE_NAME)) {
         db.createObjectStore(TRACKS_STORE_NAME, { keyPath: "id" });
       }
+
+      if (!db.objectStoreNames.contains(INITIAL_TRACKS_STORE_NAME)) {
+        db.createObjectStore(INITIAL_TRACKS_STORE_NAME, { keyPath: "id" });
+      }
     };
 
-    request.onsuccess = () => resolve(request.result);
+    request.onblocked = () => {
+      initialTracksStatus.hidden = false;
+      initialTracksStatus.textContent = "Для обновления хранилища закрой другие открытые вкладки BeatMarks.";
+    };
+    request.onsuccess = () => {
+      const db = request.result;
+      db.onversionchange = () => {
+        db.close();
+        initialTracksStatus.hidden = false;
+        initialTracksStatus.textContent = "Доступна новая версия хранилища. Обнови страницу.";
+      };
+      resolve(db);
+    };
     request.onerror = () => reject(request.error);
   });
+}
+
+async function fetchInitialAsset(url) {
+  const response = await fetch(url);
+  if (!response.ok) {
+    throw new Error(`Не удалось загрузить ${url}.`);
+  }
+  return response;
+}
+
+async function needsInitialTrack(id) {
+  const db = await dbPromise;
+
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction([TRACKS_STORE_NAME, INITIAL_TRACKS_STORE_NAME], "readwrite");
+    const initialized = tx.objectStore(INITIAL_TRACKS_STORE_NAME);
+    const check = initialized.get(id);
+    let needed = false;
+
+    check.onsuccess = () => {
+      if (check.result) return;
+
+      const request = tx.objectStore(TRACKS_STORE_NAME).get(id);
+      request.onsuccess = () => {
+        needed = !request.result;
+        if (!needed) initialized.put({ id });
+      };
+    };
+
+    tx.oncomplete = () => resolve(needed);
+    tx.onerror = () => reject(tx.error);
+    tx.onabort = () => reject(tx.error);
+  });
+}
+
+async function initializeInitialTracks() {
+  retryInitialTracks.disabled = true;
+  retryInitialTracks.hidden = true;
+  initialTracksStatus.hidden = false;
+  initialTracksStatus.textContent = "Загружаю начальные треки…";
+
+  try {
+    const db = await dbPromise;
+    const catalogResponse = await fetchInitialAsset("./initial-tracks.json");
+    const catalog = await catalogResponse.json();
+    for (const preset of catalog) {
+      const id = makeTrackId(preset);
+      if (!await needsInitialTrack(id)) continue;
+
+      const [audioResponse, markersResponse] = await Promise.all([
+        fetchInitialAsset(preset.audio),
+        fetchInitialAsset(preset.markers)
+      ]);
+      const [data, markers] = await Promise.all([
+        audioResponse.arrayBuffer(),
+        markersResponse.json()
+      ]);
+      if (data.byteLength !== preset.size || !Array.isArray(markers)) {
+        throw new Error("Неверный формат начального трека или меток.");
+      }
+
+      const addedTrack = await new Promise((resolve, reject) => {
+        const tx = db.transaction([TRACKS_STORE_NAME, INITIAL_TRACKS_STORE_NAME], "readwrite");
+        const tracks = tx.objectStore(TRACKS_STORE_NAME);
+        const initialized = tx.objectStore(INITIAL_TRACKS_STORE_NAME);
+        const check = initialized.get(id);
+        let added = null;
+
+        check.onsuccess = () => {
+          if (check.result) return;
+
+          const request = tracks.get(id);
+          request.onsuccess = () => {
+            if (!request.result) {
+              try {
+                const savedMarkers = loadMarkersByTrack();
+                if (!Object.hasOwn(savedMarkers, id)) {
+                  savedMarkers[id] = markers;
+                  localStorage.setItem(MARKERS_STORAGE_KEY, JSON.stringify(savedMarkers));
+                }
+              } catch {
+                tx.abort();
+                return;
+              }
+
+              added = {
+                id,
+                name: preset.name,
+                size: preset.size,
+                type: "audio/mpeg",
+                lastModified: preset.lastModified,
+                savedAt: new Date().toISOString(),
+                data
+              };
+              tracks.add(added);
+            }
+            initialized.put({ id });
+          };
+        };
+
+        tx.oncomplete = () => resolve(added);
+        tx.onerror = () => reject(tx.error);
+        tx.onabort = () => reject(tx.error);
+      });
+
+      markersByTrack = loadMarkersByTrack();
+      if (addedTrack && !currentTrackId) {
+        setAudioFromTrack(addedTrack, false);
+      }
+      await renderSavedTracks();
+    }
+
+    initialTracksStatus.hidden = true;
+  } catch (error) {
+    console.error("Ошибка загрузки начальных треков:", error);
+    initialTracksStatus.textContent = "Не удалось загрузить начальные треки. Проверь подключение и повтори загрузку.";
+    retryInitialTracks.hidden = false;
+  } finally {
+    retryInitialTracks.disabled = false;
+    await renderSavedTracks();
+    renderMarkers();
+  }
 }
 
 async function saveTrackToDb(file) {
@@ -169,7 +354,15 @@ async function saveTrackToDb(file) {
 
   return new Promise((resolve, reject) => {
     const tx = db.transaction(TRACKS_STORE_NAME, "readwrite");
-    tx.objectStore(TRACKS_STORE_NAME).put(track);
+    const store = tx.objectStore(TRACKS_STORE_NAME);
+    const request = store.get(track.id);
+
+    request.onsuccess = () => {
+      if (request.result?.displayName) {
+        track.displayName = request.result.displayName;
+      }
+      store.put(track);
+    };
 
     tx.oncomplete = () => resolve(track);
     tx.onerror = () => reject(tx.error || new Error("Не удалось записать файл в IndexedDB."));
@@ -207,12 +400,52 @@ async function deleteTrackFromDb(trackId) {
   const db = await dbPromise;
 
   return new Promise((resolve, reject) => {
-    const tx = db.transaction(TRACKS_STORE_NAME, "readwrite");
+    const tx = db.transaction([TRACKS_STORE_NAME, INITIAL_TRACKS_STORE_NAME], "readwrite");
     tx.objectStore(TRACKS_STORE_NAME).delete(trackId);
+    tx.objectStore(INITIAL_TRACKS_STORE_NAME).put({ id: trackId });
 
     tx.oncomplete = () => resolve();
     tx.onerror = () => reject(tx.error);
   });
+}
+
+async function renameSavedTrack(track) {
+  const enteredName = prompt("Название трека в приложении", getTrackDisplayName(track));
+  if (enteredName === null) return;
+
+  const displayName = enteredName.trim();
+  if (!displayName) {
+    alert("Введи название трека.");
+    return;
+  }
+
+  try {
+    const db = await dbPromise;
+    const renamedTrack = await new Promise((resolve, reject) => {
+      const tx = db.transaction(TRACKS_STORE_NAME, "readwrite");
+      const store = tx.objectStore(TRACKS_STORE_NAME);
+      const request = store.get(track.id);
+      let updatedTrack = null;
+
+      request.onsuccess = () => {
+        if (!request.result) return;
+
+        updatedTrack = { ...request.result, displayName };
+        store.put(updatedTrack);
+      };
+
+      tx.oncomplete = () => resolve(updatedTrack);
+      tx.onerror = () => reject(tx.error);
+      tx.onabort = () => reject(tx.error);
+    });
+
+    if (renamedTrack && track.id === currentTrackId) {
+      setDisplayedTrackName(renamedTrack.name, renamedTrack.displayName);
+    }
+    await renderSavedTracks();
+  } catch {
+    alert("Не удалось сохранить название трека. Попробуй ещё раз.");
+  }
 }
 
 async function renderSavedTracks() {
@@ -238,7 +471,8 @@ async function renderSavedTracks() {
       row.className = "marker";
       row.tabIndex = 0;
       row.setAttribute("role", "button");
-      row.setAttribute("aria-label", `Открыть трек ${track.name}`);
+      const displayName = getTrackDisplayName(track);
+      row.setAttribute("aria-label", `Открыть трек ${displayName}`);
 
       row.addEventListener("click", () => {
         if (track.id !== currentTrackId) setAudioFromTrack(track, true);
@@ -246,7 +480,7 @@ async function renderSavedTracks() {
       });
 
       row.addEventListener("keydown", (event) => {
-        if (event.key === "Enter" || event.key === " ") {
+        if (event.target === row && (event.key === "Enter" || event.key === " ")) {
           event.preventDefault();
           if (track.id !== currentTrackId) setAudioFromTrack(track, true);
           closeTrackMenu();
@@ -259,23 +493,26 @@ async function renderSavedTracks() {
 
       const title = document.createElement("div");
       title.className = "marker-label";
-      title.title = track.name;
-      title.textContent = track.id === currentTrackId ? `▶ ${track.name}` : track.name;
+      title.title = displayName;
+      title.textContent = track.id === currentTrackId ? `▶ ${displayName}` : displayName;
 
-      const remove = document.createElement("button");
-      remove.type = "button";
-      remove.className = "marker-menu-btn";
-      remove.textContent = "×";
-      remove.ariaLabel = "Удалить сохранённый трек";
+      const actions = createActionMenu("Действия с треком", [
+        {
+          label: "Переименовать",
+          className: "ghost",
+          onClick: () => renameSavedTrack(track)
+        },
+        {
+          label: "Удалить",
+          className: "danger",
+          onClick: async () => {
+            const ok = confirm(`Удалить трек “${displayName}” и его метки из браузера?`);
+            if (ok) await deleteSavedTrack(track.id);
+          }
+        }
+      ]);
 
-      remove.addEventListener("click", async (event) => {
-        event.stopPropagation();
-        const ok = confirm(`Удалить трек “${track.name}” и его метки из браузера?`);
-        if (!ok) return;
-        await deleteSavedTrack(track.id);
-      });
-
-      row.append(size, title, remove);
+      row.append(size, title, actions.button, actions.menu);
       trackList.appendChild(row);
     });
   } catch {
@@ -353,7 +590,7 @@ function setAudioFromTrack(track, shouldPlay = true) {
     });
   }
 
-  setDisplayedTrackName(track.name);
+  setDisplayedTrackName(track.name, track.displayName);
 
   if (!markersByTrack[currentTrackId]) {
     markersByTrack[currentTrackId] = [];
@@ -420,7 +657,7 @@ function renderMarkers() {
     row.addEventListener("click", () => jumpTo(marker.time));
 
     row.addEventListener("keydown", (event) => {
-      if (event.key === "Enter" || event.key === " ") {
+      if (event.target === row && (event.key === "Enter" || event.key === " ")) {
         event.preventDefault();
         jumpTo(marker.time);
       }
@@ -435,45 +672,20 @@ function renderMarkers() {
     label.title = marker.label;
     label.textContent = marker.label || "Без названия";
 
-    const menu = document.createElement("button");
-    menu.type = "button";
-    menu.className = "marker-menu-btn";
-    menu.textContent = "⋯";
-    menu.ariaLabel = "Изменить или удалить метку";
+    const actions = createActionMenu("Изменить или удалить метку", [
+      {
+        label: "Изменить",
+        className: "ghost",
+        onClick: () => editMarker(index)
+      },
+      {
+        label: "Удалить",
+        className: "danger",
+        onClick: () => removeMarker(index)
+      }
+    ]);
 
-    const actionMenu = document.createElement("div");
-    actionMenu.className = "marker-action-menu";
-
-    const editButton = document.createElement("button");
-    editButton.type = "button";
-    editButton.className = "ghost";
-    editButton.textContent = "Изменить";
-    editButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      closeAllMarkerMenus();
-      editMarker(index);
-    });
-
-    const deleteButton = document.createElement("button");
-    deleteButton.type = "button";
-    deleteButton.className = "danger";
-    deleteButton.textContent = "Удалить";
-    deleteButton.addEventListener("click", (event) => {
-      event.stopPropagation();
-      closeAllMarkerMenus();
-      removeMarker(index);
-    });
-
-    actionMenu.append(editButton, deleteButton);
-
-    menu.addEventListener("click", (event) => {
-      event.stopPropagation();
-      const wasOpen = actionMenu.classList.contains("open");
-      closeAllMarkerMenus();
-      if (!wasOpen) actionMenu.classList.add("open");
-    });
-
-    row.append(time, label, menu, actionMenu);
+    row.append(time, label, actions.button, actions.menu);
     markerList.appendChild(row);
   });
 }
@@ -533,6 +745,7 @@ function editMarker(index) {
 
   saveMarkersByTrack();
   renderMarkers();
+  markerForm.open = true;
   markerLabel.focus();
 }
 
@@ -751,10 +964,17 @@ preRollSeconds.addEventListener("input", () => {
   savePreRollValue(preRollSeconds.value);
 });
 
+retryInitialTracks.addEventListener("click", initializeInitialTracks);
+
 exportMarkers.addEventListener("click", exportMarkersToJson);
 
 importMarkersButton.addEventListener("click", () => {
   importMarkersInput.click();
+});
+
+jsonFormatButton.addEventListener("click", () => {
+  jsonFormatHelp.hidden = !jsonFormatHelp.hidden;
+  jsonFormatButton.setAttribute("aria-expanded", String(!jsonFormatHelp.hidden));
 });
 
 importMarkersInput.addEventListener("change", () => {
@@ -765,11 +985,11 @@ importMarkersInput.addEventListener("change", () => {
   importMarkersInput.value = "";
 });
 
-document.addEventListener("click", closeAllMarkerMenus);
+document.addEventListener("click", closeAllActionMenus);
 
 document.addEventListener("keydown", (event) => {
   if (event.key === "Escape") {
-    closeAllMarkerMenus();
+    closeAllActionMenus();
     closeTrackMenu();
   }
 });

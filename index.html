@@ -9,450 +9,7 @@
   <link rel="apple-touch-icon" sizes="180x180" href="./apple-touch-icon.png" />
   <link rel="manifest" href="./manifest.webmanifest" />
 
-  <style>
-    :root {
-      --bg: #333840;
-      --panel: #2f343c;
-      --panel-soft: #3b414b;
-      --text: #f5f7fb;
-      --muted: #aeb4bf;
-      --accent: #e7ff00;
-      --accent-dark: #c8dd00;
-      --danger: #ef4444;
-      --border: rgba(255, 255, 255, 0.08);
-      --shadow: rgba(0, 0, 0, 0.28);
-      --player-height: 258px;
-    }
-
-    * { box-sizing: border-box; }
-
-    html { scroll-behavior: smooth; }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-      background: var(--bg);
-      color: var(--text);
-      padding-bottom: calc(var(--player-height) + 26px);
-    }
-
-    .app {
-      width: min(720px, 100%);
-      margin: 0 auto;
-      padding: 16px 18px 0;
-    }
-
-    .topbar {
-      position: sticky;
-      top: 0;
-      z-index: 20;
-      width: min(720px, 100%);
-      margin: 0 auto;
-      padding: 14px 18px 10px;
-      display: grid;
-      grid-template-columns: 44px 1fr 44px;
-      align-items: center;
-      background: linear-gradient(180deg, rgba(51, 56, 64, 0.98), rgba(51, 56, 64, 0.82));
-      backdrop-filter: blur(16px);
-    }
-
-    .app-title {
-      margin: 0;
-      text-align: center;
-      font-size: 18px;
-      font-weight: 800;
-      letter-spacing: 0.01em;
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-    }
-
-    .icon-button {
-      width: 44px;
-      height: 44px;
-      padding: 0;
-      border-radius: 16px;
-      display: inline-grid;
-      place-items: center;
-      background: transparent;
-      color: var(--muted);
-      border: 0;
-      cursor: pointer;
-      font-size: 24px;
-      line-height: 1;
-    }
-
-    .icon-button:active,
-    .control-btn:active,
-    .play-main:active,
-    button:active { transform: scale(0.96); }
-
-    .cover-card {
-      width: min(540px, calc(100vw - 36px));
-      aspect-ratio: 1 / 1;
-      margin: 34px auto 26px;
-      border-radius: 14px;
-      background:
-        radial-gradient(circle at 72% 24%, rgba(255,255,255,0.25), transparent 20%),
-        radial-gradient(circle at 45% 38%, rgba(231,255,0,0.18), transparent 10%),
-        linear-gradient(145deg, #222833, #111827 54%, #202935);
-      box-shadow: 0 26px 60px var(--shadow);
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-      border: 1px solid var(--border);
-    }
-
-    .markers-stage-header {
-      padding: 18px 18px 10px;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-    }
-
-    .markers-stage-header h2 {
-      margin: 0;
-      font-size: 18px;
-    }
-
-    .markers-count {
-      color: var(--muted);
-      font-size: 14px;
-      white-space: nowrap;
-    }
-
-    .markers-scroll {
-      flex: 1;
-      min-height: 0;
-      overflow-y: auto;
-      padding: 0 14px 16px;
-      overscroll-behavior: contain;
-    }
-
-    .marker-list {
-      display: grid;
-      gap: 10px;
-    }
-
-    .marker {
-      position: relative;
-      display: grid;
-      grid-template-columns: 74px 1fr 38px;
-      gap: 10px;
-      align-items: center;
-      padding: 12px;
-      border-radius: 16px;
-      border: 1px solid var(--border);
-      background: rgba(255, 255, 255, 0.055);
-      cursor: pointer;
-    }
-
-    .marker-time {
-      font-variant-numeric: tabular-nums;
-      color: var(--accent);
-      font-weight: 850;
-    }
-
-    .marker-label {
-      min-width: 0;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
-      font-weight: 650;
-    }
-
-    .marker-menu-btn {
-      width: 36px;
-      height: 36px;
-      border-radius: 999px;
-      background: rgba(255, 255, 255, 0.08);
-      color: var(--text);
-      border: 0;
-      padding: 0;
-      font-size: 22px;
-      line-height: 1;
-    }
-
-    .marker-action-menu {
-      position: absolute;
-      right: 10px;
-      top: 52px;
-      z-index: 10;
-      min-width: 142px;
-      display: none;
-      padding: 8px;
-      border-radius: 16px;
-      background: #252a32;
-      border: 1px solid var(--border);
-      box-shadow: 0 18px 40px rgba(0,0,0,0.36);
-    }
-
-    .marker-action-menu.open { display: grid; gap: 8px; }
-
-    .marker-action-menu button {
-      width: 100%;
-      text-align: left;
-      border-radius: 12px;
-      padding: 10px 12px;
-    }
-
-    .empty {
-      color: var(--muted);
-      border: 1px dashed var(--border);
-      padding: 18px;
-      border-radius: 16px;
-      text-align: center;
-      background: rgba(255, 255, 255, 0.04);
-    }
-
-    .track-info {
-      width: min(620px, 100%);
-      margin: 0 auto 10px;
-      display: grid;
-      grid-template-columns: 54px 1fr;
-      align-items: center;
-      gap: 12px;
-    }
-
-    .track-thumb {
-      width: 54px;
-      height: 54px;
-      border-radius: 50%;
-      background: linear-gradient(135deg, #111827, #58606d);
-      border: 1px solid var(--border);
-      display: grid;
-      place-items: center;
-      font-size: 22px;
-    }
-
-    .track-name {
-      margin: 0;
-      color: var(--text);
-      word-break: break-word;
-      font-size: 20px;
-      font-weight: 800;
-      line-height: 1.15;
-    }
-
-    .track-subtitle {
-      margin: 4px 0 0;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    .card {
-      background: rgba(47, 52, 60, 0.94);
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      padding: 16px;
-      margin-bottom: 16px;
-      box-shadow: 0 18px 42px var(--shadow);
-      backdrop-filter: blur(12px);
-    }
-
-    .card h2 { margin: 0 0 12px; font-size: 20px; }
-
-    label {
-      display: block;
-      margin-bottom: 8px;
-      color: var(--muted);
-      font-size: 14px;
-    }
-
-    input[type="file"],
-    input[type="text"],
-    input[type="number"] {
-      width: 100%;
-      border: 1px solid var(--border);
-      background: #252a32;
-      color: var(--text);
-      border-radius: 14px;
-      padding: 13px;
-      font-size: 16px;
-      outline: none;
-    }
-
-    input:focus { border-color: rgba(231, 255, 0, 0.65); }
-
-    audio { display: none; }
-
-    .time-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      margin-top: 10px;
-      color: var(--muted);
-      font-variant-numeric: tabular-nums;
-      font-size: 13px;
-    }
-
-    .progress {
-      width: 100%;
-      height: 5px;
-      background: rgba(255,255,255,0.16);
-      border-radius: 999px;
-      overflow: visible;
-      margin-top: 12px;
-      cursor: pointer;
-    }
-
-    .progress-fill {
-      width: 0%;
-      height: 100%;
-      background: var(--text);
-      border-radius: 999px;
-      transition: width 0.12s linear;
-      pointer-events: none;
-    }
-
-    .player-dock {
-      position: fixed;
-      left: 50%;
-      bottom: 0;
-      transform: translateX(-50%);
-      z-index: 30;
-      width: min(720px, 100%);
-      min-height: var(--player-height);
-      padding: 14px 18px calc(14px + env(safe-area-inset-bottom));
-      background: linear-gradient(180deg, rgba(51, 56, 64, 0.72), rgba(51, 56, 64, 0.98) 22%);
-      backdrop-filter: blur(20px);
-      border-top: 1px solid var(--border);
-    }
-
-    .player-controls {
-      display: grid;
-      grid-template-columns: 1fr 1fr 84px 1fr 1fr;
-      align-items: center;
-      gap: 12px;
-      margin: 14px 0 12px;
-    }
-
-    .control-btn,
-    .play-main,
-    button {
-      border: 0;
-      color: var(--text);
-      background: var(--panel-soft);
-      cursor: pointer;
-      transition: transform 0.08s ease, background 0.15s ease, opacity 0.15s ease;
-      touch-action: manipulation;
-      font-weight: 750;
-    }
-
-    .control-btn {
-      width: 48px;
-      height: 48px;
-      border-radius: 999px;
-      justify-self: center;
-      display: grid;
-      place-items: center;
-      font-size: 22px;
-      padding: 0;
-    }
-
-    .seek-btn { font-size: 15px; }
-
-    .play-main {
-      width: 84px;
-      height: 84px;
-      border-radius: 50%;
-      justify-self: center;
-      background: var(--accent);
-      color: #111827;
-      font-size: 34px;
-      display: grid;
-      place-items: center;
-      padding: 0 0 0 4px;
-      box-shadow: 0 14px 34px rgba(231, 255, 0, 0.16);
-    }
-
-    .play-main.is-pause { padding-left: 0; }
-
-    .pre-roll-wrap { margin-top: 6px; }
-
-    .form-grid { display: grid; grid-template-columns: 1fr; gap: 12px; }
-    .small-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
-    .buttons { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
-
-    button {
-      border-radius: 14px;
-      padding: 12px 14px;
-      font-size: 15px;
-    }
-
-    button.primary { background: var(--accent); color: #111827; }
-    button.danger { background: rgba(239, 68, 68, 0.18); color: #fecaca; }
-    button.ghost { background: rgba(255,255,255,0.06); border: 1px solid var(--border); }
-    button:disabled { opacity: 0.45; cursor: not-allowed; }
-
-    .hint {
-      color: var(--muted);
-      font-size: 13px;
-      line-height: 1.45;
-      margin: 10px 0 0;
-    }
-
-    .hidden-file { display: none; }
-
-    .menu-backdrop {
-      position: fixed;
-      inset: 0;
-      z-index: 50;
-      background: rgba(0,0,0,0.34);
-      opacity: 0;
-      pointer-events: none;
-      transition: opacity 0.18s ease;
-    }
-
-    .menu-backdrop.open { opacity: 1; pointer-events: auto; }
-
-    .side-menu {
-      position: fixed;
-      top: 0;
-      right: 0;
-      z-index: 60;
-      width: min(390px, 92vw);
-      height: 100vh;
-      padding: 18px;
-      background: #2f343c;
-      box-shadow: -24px 0 60px rgba(0,0,0,0.35);
-      transform: translateX(105%);
-      transition: transform 0.22s ease;
-      overflow-y: auto;
-      overflow-x: hidden;
-    }
-
-    .side-menu .marker {
-      grid-template-columns: 68px minmax(0, 1fr) 36px;
-      width: 100%;
-    }
-
-    .side-menu.open { transform: translateX(0); }
-
-    .menu-head {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 12px;
-      margin-bottom: 16px;
-    }
-
-    .menu-head h2 { margin: 0; }
-
-    @media (max-width: 520px) {
-      :root { --player-height: 248px; }
-      .app { padding: 12px 14px 0; }
-      .cover-card { margin-top: 24px; }
-      .player-controls { grid-template-columns: 1fr 1fr 78px 1fr 1fr; gap: 8px; }
-      .play-main { width: 78px; height: 78px; }
-      .control-btn { width: 42px; height: 42px; font-size: 20px; }
-      .small-grid { grid-template-columns: 1fr; }
-    }
-  </style>
+  <link rel="stylesheet" href="./styles.css" />
 </head>
 
 <body>
@@ -481,8 +38,8 @@
       </div>
     </section>
 
-    <section class="card">
-      <h2>Добавить метку</h2>
+    <details id="markerForm" class="card marker-form">
+      <summary>Добавить метку</summary>
       <div class="form-grid">
         <div>
           <label for="markerLabel">Название метки</label>
@@ -496,7 +53,7 @@
           </div>
           <div>
             <label>&nbsp;</label>
-            <button id="useCurrentTime" type="button" class="ghost" style="width:100%;">Взять текущее время</button>
+            <button id="useCurrentTime" type="button" class="ghost">Взять текущее время</button>
           </div>
         </div>
       </div>
@@ -507,7 +64,7 @@
       </div>
 
       <p class="hint">Метки открываются простым нажатием на поле метки. Для изменения или удаления жми ⋯ справа.</p>
-    </section>
+    </details>
 
   </main>
 
@@ -544,19 +101,37 @@
       <button id="closeMenu" class="icon-button" type="button" aria-label="Закрыть меню">×</button>
     </div>
     <span id="tracksCount" class="markers-count">0 шт.</span>
-    <div id="trackList" class="marker-list" style="margin-top:12px;"></div>
+    <p id="initialTracksStatus" class="hint" role="status" hidden></p>
+    <button id="retryInitialTracks" type="button" class="ghost" hidden>Повторить загрузку</button>
+    <div id="trackList" class="marker-list"></div>
 
-    <div class="card" style="margin-top:16px; box-shadow:none;">
+    <div class="card">
       <h2>Импорт и экспорт JSON</h2>
       <div class="buttons">
         <button id="exportMarkers" type="button" class="ghost">Экспорт JSON</button>
         <button id="importMarkersButton" type="button" class="ghost">Импорт JSON</button>
+        <button id="jsonFormatButton" type="button" class="ghost" aria-expanded="false" aria-controls="jsonFormatHelp">Формат JSON</button>
       </div>
       <input id="importMarkersInput" class="hidden-file" type="file" accept="application/json,.json" />
       <p class="hint">JSON нужен, чтобы перенести список меток на другое устройство или сделать резервную копию.</p>
+      <div id="jsonFormatHelp" hidden>
+        <p class="hint">Выбери MP3-файл и импортируй массив меток. Он заменит метки выбранного трека.</p>
+        <pre class="json-example" tabindex="0" aria-label="Пример JSON для выбранного трека"><code>[
+  {
+    "label": "Вступление",
+    "time": 0
+  },
+  {
+    "label": "Припев",
+    "time": 72.5
+  }
+]</code></pre>
+        <p class="hint"><code>label</code> — название метки. <code>time</code> — время в секундах от начала трека, можно с дробной частью. Сохрани массив в файл с расширением <code>.json</code>.</p>
+        <p class="hint">Файл из «Экспорт JSON» тоже поддерживается. При его импорте заменяются метки всех треков.</p>
+      </div>
     </div>
 
-    <div class="card" style="margin-top:16px; box-shadow:none;">
+    <div class="card">
       <h2>Добавить новый MP3</h2>
       <label for="audioFile">MP3-файл</label>
       <input id="audioFile" type="file" accept="audio/mpeg,audio/mp3,audio/*" />
