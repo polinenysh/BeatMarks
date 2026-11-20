@@ -14,7 +14,6 @@ const initialTracksStatus = document.getElementById("initialTracksStatus");
 const retryInitialTracks = document.getElementById("retryInitialTracks");
 const currentTimeEl = document.getElementById("currentTime");
 const durationEl = document.getElementById("duration");
-const progressFill = document.getElementById("progressFill");
 const progressBar = document.getElementById("progressBar");
 const playPauseButton = document.getElementById("playPauseButton");
 
@@ -764,12 +763,13 @@ function updatePlayerTime() {
   currentTimeEl.textContent = formatTime(audio.currentTime);
   durationEl.textContent = formatTime(audio.duration);
 
-  if (Number.isFinite(audio.duration) && audio.duration > 0) {
-    const percent = (audio.currentTime / audio.duration) * 100;
-    progressFill.style.width = `${Math.min(100, Math.max(0, percent))}%`;
-  } else {
-    progressFill.style.width = "0%";
-  }
+  const canSeek = Boolean(audio.src) && Number.isFinite(audio.duration) && audio.duration > 0;
+  const percent = canSeek ? Math.min(100, Math.max(0, audio.currentTime / audio.duration * 100)) : 0;
+
+  progressBar.disabled = !canSeek;
+  progressBar.value = String(percent);
+  progressBar.style.setProperty("--progress", `${percent}%`);
+  progressBar.setAttribute("aria-valuetext", `${currentTimeEl.textContent} из ${durationEl.textContent}`);
 }
 
 function updatePlayPauseButton() {
@@ -923,16 +923,13 @@ playPauseButton.addEventListener("click", () => {
   }
 });
 
-progressBar.addEventListener("click", (event) => {
+progressBar.addEventListener("input", () => {
   if (!audio.src || !Number.isFinite(audio.duration) || audio.duration <= 0) {
     return;
   }
 
-  const rect = progressBar.getBoundingClientRect();
-  const clickX = event.clientX - rect.left;
-  const percent = clickX / rect.width;
-
-  audio.currentTime = Math.max(0, Math.min(audio.duration, audio.duration * percent));
+  audio.currentTime = Math.max(0, Math.min(audio.duration, audio.duration * progressBar.valueAsNumber / 100));
+  updatePlayerTime();
 });
 
 useCurrentTime.addEventListener("click", () => {

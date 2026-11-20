@@ -71,9 +71,7 @@
   <section class="player-dock" aria-label="Плеер">
     <audio id="audio" preload="metadata"></audio>
 
-    <div id="progressBar" class="progress">
-      <div id="progressFill" class="progress-fill"></div>
-    </div>
+    <input id="progressBar" class="progress" type="range" min="0" max="100" step="any" value="0" aria-label="Позиция трека" disabled />
 
     <div class="time-row">
       <span id="currentTime">00:00</span>
